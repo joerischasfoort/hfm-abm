@@ -1,4 +1,4 @@
-"""Limit orderbook from Schasfoort & Stockermans"""
+"""Limit orderbook updated from Schasfoort & Stockermans 2017"""
 
 import bisect
 import operator
@@ -6,13 +6,10 @@ import operator
 
 class LimitOrderBook:
     """Base limit order book """
-    def __init__(self, stock, last_price, order_expiration, initial_bid_ask):
-        """Creates a new trader"""
-        self.stock = stock
+    def __init__(self, last_price, initial_bid_ask, max_return_interval):
         self.transaction_prices = []
         self.transaction_volumes = []
         self.matched_bids = []
-        self.order_expiration = order_expiration
         self.bids = []
         self.asks = []
         self.unresolved_orders_history = []
@@ -28,6 +25,7 @@ class LimitOrderBook:
         self.buy_orders_today = 0
         self.sell_orders_history = []
         self.buy_orders_history = []
+        self.returns = [0 for i in range(max_return_interval)]
 
     def add_bid(self, price, volume, agent):
         """Add a bid to the (price low-high, age young-old) sorted bids book"""

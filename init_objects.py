@@ -1,6 +1,6 @@
 import numpy as np
 from objects.trader import *
-
+from objects.orderbook import *
 
 def init_objects(parameters):
     """
@@ -18,10 +18,12 @@ def init_objects(parameters):
         weight_fundamentalist = parameters['w_fundamentalists']
         weight_chartist = parameters['w_chartists']
         weight_random = parameters['w_random']
-        lft_vars = Traderariables(parameters['wealth'], weight_fundamentalist, weight_chartist, weight_random)
-        previous_lft_vars = Traderariables(parameters['wealth'], weight_fundamentalist, weight_chartist, weight_random)
-        lft_params = TraderParameters(parameters['ma_short'], parameters['ma_long'])
+        lft_vars = Tradervariables(parameters['wealth'], weight_fundamentalist, weight_chartist, weight_random)
+        previous_lft_vars = Tradervariables(parameters['wealth'], weight_fundamentalist, weight_chartist, weight_random)
+        lft_params = TraderParameters(parameters['horizon_min'], parameters['horizon_max'])
         lft_expectations = TraderExpectations(parameters['init_price'])
         low_frequency_traders.append(LFTrader(idx, lft_vars, previous_lft_vars, lft_params, lft_expectations))
 
-    return low_frequency_traders
+    orderbook = LimitOrderBook(parameters['fundamental_value'], parameters["agent_order_price_variability"], parameters['horizon_max'])
+
+    return low_frequency_traders, orderbook

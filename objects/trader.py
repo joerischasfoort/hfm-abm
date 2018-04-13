@@ -1,3 +1,5 @@
+import numpy as np
+
 class LFTrader():
     """Class holding low frequency trader properties"""
     def __init__(self, name, variables, previous_variables, parameters, expectations):
@@ -11,24 +13,26 @@ class LFTrader():
         return 'LFT' + str(self.name)
 
 
-class Traderariables:
+class Tradervariables:
     """
     Holds the initial variables for the traders
     """
     def __init__(self, wealth, weight_fundamentalist, weight_chartist, weight_random):
         self.wealth = wealth
-        self.weight_fundamentalist = weight_fundamentalist
-        self.weight_chartist = weight_chartist
-        self.weight_random = weight_random
+        self.weight_fundamentalist = np.abs(weight_fundamentalist * np.random.randn())
+        self.weight_chartist = (weight_chartist * np.random.randn())
+        self.weight_random = (weight_random * np.random.randn())
+        self.forecast_adjust = 1. / (self.weight_fundamentalist + self.weight_chartist + self.weight_random)
 
 
 class TraderParameters:
     """
     Holds the the trader parameters
     """
-    def __init__(self, ma_short, ma_long):
-        self.ma_short = ma_short
-        self.ma_long = ma_long
+    def __init__(self, horizon_min, horizon_max):
+        self.horizon_min = horizon_min
+        self.horizon_max = horizon_max
+        self.horizon = np.random.randint(horizon_min, horizon_max)
 
 
 class TraderExpectations:
