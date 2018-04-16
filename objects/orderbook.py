@@ -37,33 +37,6 @@ class LimitOrderBook:
         bisect.insort_right(self.asks, Order(order_type='a', owner=agent, price=price, volume=volume))
         self.update_bid_ask_spread('ask')
 
-    def clean_book(self):
-        """Increase age of orders and clean those past their expiration date"""
-        self.m_m_orders_available_after_cleaning = True
-        new_bids = []
-        for bid in self.bids:
-            bid.age += 1
-            if bid.age < self.order_expiration:
-                new_bids.append(bid)
-            else:
-                # notify the owner of that bid that it no longer has an order in the market
-                bid.owner.order_in_market = False
-
-        new_asks = []
-        for ask in self.asks:
-            ask.age += 1
-            if ask.age < self.order_expiration:
-                new_asks.append(ask)
-            else:
-                # notify the owner of that bid that it no longer has an order in the market
-                ask.owner.order_in_market = False
-
-        self.bids = new_bids
-        self.asks = new_asks
-        # update current highest bid and lowest ask
-        for order_type in ['bid', 'ask']:
-            self.update_bid_ask_spread(order_type)
-
     def cleanse_book(self):
         """
         store and clean unresolved orders
@@ -83,9 +56,9 @@ class LimitOrderBook:
         self.buy_orders_today = 0
         self.sell_orders_history.append(self.sell_orders_today)
         self.sell_orders_today = 0
-        # in this model not all orders are deleted at the end of the day
-        #self.bids = []
-        #self.asks = []
+        # in this model all orders are cleared at the end of the tick
+        self.bids = []
+        self.asks = []
 
     def match_orders(self):
         """Return a price, volume, bid and ask and delete them from the order book if volume of either reaches zero"""
@@ -116,15 +89,11 @@ class LimitOrderBook:
                 self.bids[-1].volume -= volume
                 # delete the empty bid or ask
                 if min_index == 0:
-                    if 'maker' in repr(self.bids[-1].owner):
-                        market_maker_orders_available = (False, 'bid')
                     self.bids[-1].owner.order_in_market = False
                     del self.bids[-1]
                     # update current highest bid
                     self.update_bid_ask_spread('bid')
                 else:
-                    if 'maker' in repr(self.asks[0].owner):
-                        market_maker_orders_available = (False, 'ask')
                     self.asks[0].owner.order_in_market = False
                     del self.asks[0]
                     # update lowest ask

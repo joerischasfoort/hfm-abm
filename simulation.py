@@ -8,12 +8,12 @@ parameters = {
     # global parameters
     "n_lft": 50,
     "n_hft": 1,
-    "ticks": 10,
+    "ticks": 1000,
     "fundamental_value": 1000,
     "lft_sample_size": 0.2,
     "std_noise": 0.01,
     "std_LFT_price": 0.01,
-    "std_LFT_vol": 0.01,
+    "std_LFT_vol": 4,
     # agent parameters
     "w_fundamentalists": 0.4,
     "w_chartists": 0.4,
@@ -31,4 +31,4 @@ parameters = {
 low_frequency_traders, orderbook = init_objects(parameters)
 
 # 3 simulate model
-low_frequency_traders = hft_model(low_frequency_traders, orderbook, parameters, seed=1)
+low_frequency_traders, orderbook = hft_model(low_frequency_traders, orderbook, parameters, seed=1)

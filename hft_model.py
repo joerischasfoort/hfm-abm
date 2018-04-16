@@ -28,11 +28,15 @@ def hft_model(low_frequency_traders, orderbook, parameters, seed=1):
             # submit orders
             if fcast_price > mid_price:
                 orderbook.add_bid(mid_price + np.random.normal(scale=parameters['std_LFT_price']),
-                                  parameters['std_LFT_vol'], trader)
+                                  abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
             else:
                 orderbook.add_ask(mid_price + np.random.normal(scale=parameters['std_LFT_price']),
-                                  parameters['std_LFT_vol'], trader)
+                                  abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
-        # orderbook.match_orders
+        while True:
+            matched_orders = orderbook.match_orders()
+            if matched_orders is None:
+                break
+        orderbook.cleanse_book()
 
     return low_frequency_traders, orderbook
