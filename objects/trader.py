@@ -41,3 +41,33 @@ class TraderExpectations:
     """
     def __init__(self, price):
         self.price = price
+
+
+class HFTrader():
+    """Class holding high frequency trader properties"""
+    def __init__(self, name, variables, previous_variables, parameters):
+        self.name = name
+        self.var = variables
+        self.var_previous = previous_variables
+        self.par = parameters
+
+    def __repr__(self):
+        return 'HFT' + str(self.name)
+
+
+class HFTvariables:
+    """
+    Holds the initial variables for the traders
+    """
+    def __init__(self, money, inventory):
+        self.money = money
+        self.inventory = inventory
+
+
+class HFTParameters:
+    """
+    Holds the the trader parameters
+    """
+    def __init__(self, inventory_target, minimum_price_increment):
+        self.inventory_target = inventory_target
+        self.minimum_price_increment = minimum_price_increment

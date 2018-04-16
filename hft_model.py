@@ -3,14 +3,15 @@ import numpy as np
 import random
 
 
-def hft_model(low_frequency_traders, orderbook, parameters, seed=1):
+def hft_model(high_frequency_traders, low_frequency_traders, orderbook, parameters, seed=1):
     """The main model function"""
     random.seed(seed)
     np.random.seed(seed)
 
     for tick in range(parameters['av_return_interval_max'] + 1, parameters["ticks"]):
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
-
+        # TODO add select faster market makers with a higher probability
+        active_market_makers = random.sample(high_frequency_traders, int((parameters['hft_sample_size'] * len(high_frequency_traders))))
         # update common LFT price components
         mid_price = 0.5 * (orderbook.highest_bid_price + orderbook.lowest_ask_price)
         fundamental_component = np.log(parameters['fundamental_value'] / mid_price)
@@ -33,10 +34,18 @@ def hft_model(low_frequency_traders, orderbook, parameters, seed=1):
                 orderbook.add_ask(mid_price + np.random.normal(scale=parameters['std_LFT_price']),
                                   abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
+        for market_maker in active_market_makers:
+            if market_maker.var.inventory > market_maker.par.inventory_target:#TODO add reference to total money? :
+                orderbook.add_bid(orderbook.highest_bid_price + market_maker.par.minimum_price_increment,
+                                  abs(market_maker.var.inventory - market_maker.par.inventory_target), market_maker)
+            elif market_maker.var.inventory < market_maker.par.inventory_target:
+                orderbook.add_ask(orderbook.lowest_ask_price - market_maker.par.minimum_price_increment,
+                                  abs(market_maker.var.inventory - market_maker.par.inventory_target), market_maker)
+
         while True:
             matched_orders = orderbook.match_orders()
             if matched_orders is None:
                 break
         orderbook.cleanse_book()
 
-    return low_frequency_traders, orderbook
+    return high_frequency_traders, low_frequency_traders, orderbook
