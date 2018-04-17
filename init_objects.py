@@ -20,17 +20,17 @@ def init_objects(parameters):
         weight_fundamentalist = parameters['w_fundamentalists']
         weight_chartist = parameters['w_chartists']
         weight_random = parameters['w_random']
-        lft_vars = Tradervariables(parameters['wealth'], weight_fundamentalist, weight_chartist, weight_random)
-        previous_lft_vars = Tradervariables(parameters['wealth'], weight_fundamentalist, weight_chartist, weight_random)
+        lft_vars = Tradervariables(parameters['wealth'], 0, weight_fundamentalist, weight_chartist, weight_random)
+        previous_lft_vars = Tradervariables(parameters['wealth'], 0, weight_fundamentalist, weight_chartist, weight_random)
         lft_params = TraderParameters(parameters['horizon_min'], parameters['horizon_max'])
         lft_expectations = TraderExpectations(parameters['init_price'])
         low_frequency_traders.append(LFTrader(idx, lft_vars, previous_lft_vars, lft_params, lft_expectations))
 
     for idx in range(total_hft):
         hft_vars = HFTvariables(divide_by_agents(parameters["total_hft_money"], total_hft),
-                                divide_by_agents(parameters["total_hft_inventory"], total_hft))
+                                parameters["inventory_target"])
         previous_hft_vars = HFTvariables(divide_by_agents(parameters["total_hft_money"], total_hft),
-                                         divide_by_agents(parameters["total_hft_inventory"], total_hft))
+                                         parameters["inventory_target"])
         hft_params = HFTParameters(parameters["inventory_target"], parameters["minimum_price_increment"])
         high_frequency_traders.append(HFTrader(idx, hft_vars, previous_hft_vars, hft_params))
 

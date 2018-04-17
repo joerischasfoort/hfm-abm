@@ -15,6 +15,7 @@ parameters = {
     "std_noise": 0.01,
     "std_LFT_price": 0.01,
     "std_LFT_vol": 4,
+    "std_HFT_vol": 4,
     # lft parameters
     "w_fundamentalists": 0.4,
     "w_chartists": 0.4,
@@ -30,7 +31,6 @@ parameters = {
     "init_price": 1,
     "agent_order_price_variability": (1,1),
     "total_hft_money": 100,
-    "total_hft_inventory": 0
 }
 
 # 2 initalise model objects

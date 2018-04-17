@@ -17,8 +17,9 @@ class Tradervariables:
     """
     Holds the initial variables for the traders
     """
-    def __init__(self, wealth, weight_fundamentalist, weight_chartist, weight_random):
-        self.wealth = wealth
+    def __init__(self, money, stocks, weight_fundamentalist, weight_chartist, weight_random):
+        self.money = money
+        self.stocks = stocks
         self.weight_fundamentalist = np.abs(weight_fundamentalist * np.random.randn())
         self.weight_chartist = (weight_chartist * np.random.randn())
         self.weight_random = (weight_random * np.random.randn())
@@ -59,9 +60,9 @@ class HFTvariables:
     """
     Holds the initial variables for the traders
     """
-    def __init__(self, money, inventory):
+    def __init__(self, money, stocks):
         self.money = money
-        self.inventory = inventory
+        self.stocks = stocks
 
 
 class HFTParameters:

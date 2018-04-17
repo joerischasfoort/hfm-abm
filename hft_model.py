@@ -35,17 +35,25 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                                   abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
         for market_maker in active_market_makers:
-            if market_maker.var.inventory > market_maker.par.inventory_target:#TODO add reference to total money? :
-                orderbook.add_bid(orderbook.highest_bid_price + market_maker.par.minimum_price_increment,
-                                  abs(market_maker.var.inventory - market_maker.par.inventory_target), market_maker)
-            elif market_maker.var.inventory < market_maker.par.inventory_target:
+            volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))
+            if market_maker.var.stocks > market_maker.par.inventory_target:#TODO add reference to total money? :
                 orderbook.add_ask(orderbook.lowest_ask_price - market_maker.par.minimum_price_increment,
-                                  abs(market_maker.var.inventory - market_maker.par.inventory_target), market_maker)
+                                  volume, market_maker)
+            else:
+                orderbook.add_bid(orderbook.highest_bid_price + market_maker.par.minimum_price_increment,
+                                  volume, market_maker)
 
         while True:
             matched_orders = orderbook.match_orders()
             if matched_orders is None:
                 break
+            # execute trade
+            buyer, seller = matched_orders[2].owner, matched_orders[3].owner
+            buyer.var.stocks += matched_orders[1]
+            seller.var.stocks -= matched_orders[1]
+            buyer.var.money -= matched_orders[0] * matched_orders[1]
+            seller.var.money += matched_orders[0] * matched_orders[1]
+
         orderbook.cleanse_book()
 
     return high_frequency_traders, low_frequency_traders, orderbook
