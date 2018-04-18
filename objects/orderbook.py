@@ -111,9 +111,11 @@ class LimitOrderBook:
 
         if order_type == 'ask' and self.asks:
             self.lowest_ask_price_history.append(self.lowest_ask_price)
+            self.highest_bid_price_history.append(self.highest_bid_price)
             self.lowest_ask_price = self.asks[0].price
         if order_type == 'bid' and self.bids:
             self.highest_bid_price_history.append(self.highest_bid_price)
+            self.lowest_ask_price_history.append(self.lowest_ask_price)
             self.highest_bid_price = self.bids[-1].price
 
     def __repr__(self):

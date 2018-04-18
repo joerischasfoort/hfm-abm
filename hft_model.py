@@ -9,9 +9,28 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
     np.random.seed(seed)
 
     for tick in range(parameters['av_return_interval_max'] + 1, parameters["ticks"]):
+        if tick % parameters["investment_frequency"] > 0:
+            # investment
+            for hft in high_frequency_traders:
+                if hft.var.money < 0:
+                    print('bug money negative')
+                investment_amount = max(hft.par.investment_fraction * hft.var.money, 0)
+                hft.var.cum_investment += investment_amount
+                hft.var.money -= investment_amount
+                hft.var.speed = parameters["hft_speed"] + hft.var.cum_investment**parameters["return_on_investment"]
+
+        # select active traders
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
-        # TODO add select faster market makers with a higher probability
-        active_market_makers = random.sample(high_frequency_traders, int((parameters['hft_sample_size'] * len(high_frequency_traders))))
+        # select active HFT traders
+        all_speed = [hft.var.speed for hft in high_frequency_traders]
+        adj_factor =  1. / sum(all_speed)
+        relative_speed = [adj_factor * speed for speed in all_speed]
+        active_market_makers = np.random.choice(high_frequency_traders,
+                                                size=int((parameters['hft_sample_size'] * len(high_frequency_traders))),
+                                                p=relative_speed, replace=False)
+        # sort active market makers to fastest first
+        sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False)
+
         # update common LFT price components
         mid_price = 0.5 * (orderbook.highest_bid_price + orderbook.lowest_ask_price)
         fundamental_component = np.log(parameters['fundamental_value'] / mid_price)
@@ -34,14 +53,18 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 orderbook.add_ask(mid_price + np.random.normal(scale=parameters['std_LFT_price']),
                                   abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
-        for market_maker in active_market_makers:
-            volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))
+        for market_maker in sorted_active_market_makers:
+            ideal_volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))
             if market_maker.var.stocks > market_maker.par.inventory_target:#TODO add reference to total money? :
-                orderbook.add_ask(orderbook.lowest_ask_price - market_maker.par.minimum_price_increment,
-                                  volume, market_maker)
+                price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
+                volume = int(min(ideal_volume, market_maker.var.stocks)) # inventory constraint
+                if volume > 0:
+                    orderbook.add_ask(price, volume, market_maker)
             else:
-                orderbook.add_bid(orderbook.highest_bid_price + market_maker.par.minimum_price_increment,
-                                  volume, market_maker)
+                price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
+                volume = int(min(ideal_volume, market_maker.var.money / price)) # budget constraint
+                if volume > 0:
+                    orderbook.add_bid(price, volume, market_maker)
 
         while True:
             matched_orders = orderbook.match_orders()

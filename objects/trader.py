@@ -60,15 +60,18 @@ class HFTvariables:
     """
     Holds the initial variables for the traders
     """
-    def __init__(self, money, stocks):
+    def __init__(self, money, stocks, speed, cum_investment):
         self.money = money
         self.stocks = stocks
+        self.speed = speed
+        self.cum_investment = cum_investment
 
 
 class HFTParameters:
     """
     Holds the the trader parameters
     """
-    def __init__(self, inventory_target, minimum_price_increment):
+    def __init__(self, inventory_target, minimum_price_increment, investment_fraction):
         self.inventory_target = inventory_target
         self.minimum_price_increment = minimum_price_increment
+        self.investment_fraction = investment_fraction
