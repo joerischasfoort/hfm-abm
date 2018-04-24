@@ -26,6 +26,7 @@ parameters = {
     "inventory_target": 20,
     "minimum_price_increment":0.1,
     "investment_fraction":0.4,
+    "$hfm_risk_aversion": 10,
     # initial values
     "wealth": 300,
     "horizon_min": 1,
