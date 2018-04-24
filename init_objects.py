@@ -30,11 +30,13 @@ def init_objects(parameters):
         hft_vars = HFTvariables(divide_by_agents(parameters["total_hft_money"], total_hft),
                                 parameters["inventory_target"],
                                 parameters["hft_speed"] + parameters["hft_init_investment"]**parameters["return_on_investment"],
-                                parameters["hft_init_investment"])
-        previous_hft_vars = HFTvariables(divide_by_agents(parameters["total_hft_money"], total_hft),
+                                parameters["hft_init_investment"],
+                                divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"])
+        previous_hft_vars = HFTHistory(divide_by_agents(parameters["total_hft_money"], total_hft),
                                          parameters["inventory_target"],
                                          parameters["hft_speed"] + parameters["hft_init_investment"] ** parameters["return_on_investment"],
-                                         parameters["hft_init_investment"])
+                                         parameters["hft_init_investment"],
+                                         divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"])
         hft_params = HFTParameters(parameters["inventory_target"], parameters["minimum_price_increment"], parameters["investment_fraction"])
         high_frequency_traders.append(HFTrader(idx, hft_vars, previous_hft_vars, hft_params))
 

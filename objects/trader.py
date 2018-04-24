@@ -60,11 +60,12 @@ class HFTvariables:
     """
     Holds the initial variables for the traders
     """
-    def __init__(self, money, stocks, speed, cum_investment):
+    def __init__(self, money, stocks, speed, cum_investment, wealth):
         self.money = money
         self.stocks = stocks
         self.speed = speed
         self.cum_investment = cum_investment
+        self.wealth = wealth
 
 
 class HFTParameters:
@@ -75,3 +76,16 @@ class HFTParameters:
         self.inventory_target = inventory_target
         self.minimum_price_increment = minimum_price_increment
         self.investment_fraction = investment_fraction
+
+
+class HFTHistory:
+    """
+    Holds the the market maker history values of interest
+    """
+
+    def __init__(self, money, stocks, speed, cum_investment, wealth):
+        self.money = [money]
+        self.stocks = [stocks]
+        self.speed = [speed]
+        self.cum_investment = [cum_investment]
+        self.wealth = [wealth]

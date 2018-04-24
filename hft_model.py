@@ -12,12 +12,13 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         if tick % parameters["investment_frequency"] > 0:
             # investment
             for hft in high_frequency_traders:
-                if hft.var.money < 0:
-                    print('bug money negative')
                 investment_amount = max(hft.par.investment_fraction * hft.var.money, 0)
                 hft.var.cum_investment += investment_amount
                 hft.var.money -= investment_amount
                 hft.var.speed = parameters["hft_speed"] + hft.var.cum_investment**parameters["return_on_investment"]
+                # update hft speed & cum_investment
+                hft.var_previous.speed.append(hft.var.speed)
+                hft.var_previous.cum_investment.append(hft.var.cum_investment)
 
         # select active traders
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
@@ -47,10 +48,10 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             fcast_price = mid_price * np.exp(fcast_return)
             # submit orders
             if fcast_price > mid_price:
-                orderbook.add_bid(mid_price + np.random.normal(scale=parameters['std_LFT_price']),
+                orderbook.add_bid(np.random.normal(orderbook.lowest_ask_price, parameters['std_LFT_price']),
                                   abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
             else:
-                orderbook.add_ask(mid_price + np.random.normal(scale=parameters['std_LFT_price']),
+                orderbook.add_ask(np.random.normal(orderbook.highest_bid_price, parameters['std_LFT_price']),
                                   abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
         for market_maker in sorted_active_market_makers:
@@ -76,6 +77,12 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             seller.var.stocks -= matched_orders[1]
             buyer.var.money -= matched_orders[0] * matched_orders[1]
             seller.var.money += matched_orders[0] * matched_orders[1]
+
+        # Record hft variables
+        for hft in high_frequency_traders:
+            hft.var_previous.money.append(hft.var.money)
+            hft.var_previous.stocks.append(hft.var.stocks)
+            hft.var_previous.wealth.append(hft.var.wealth)
 
         orderbook.cleanse_book()
 
