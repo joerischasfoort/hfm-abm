@@ -24,6 +24,7 @@ class Tradervariables:
         self.weight_chartist = (weight_chartist * np.random.randn())
         self.weight_random = (weight_random * np.random.randn())
         self.forecast_adjust = 1. / (self.weight_fundamentalist + self.weight_chartist + self.weight_random)
+        self.last_buy_price = {'price': 0, 'age': 0}
 
 
 class TraderParameters:
@@ -60,22 +61,24 @@ class HFTvariables:
     """
     Holds the initial variables for the traders
     """
-    def __init__(self, money, stocks, speed, cum_investment, wealth):
+    def __init__(self, money, stocks, speed, cum_investment, wealth, last_buy_price):
         self.money = money
         self.stocks = stocks
         self.speed = speed
         self.cum_investment = cum_investment
         self.wealth = wealth
+        self.last_buy_price = last_buy_price
 
 
 class HFTParameters:
     """
     Holds the the trader parameters
     """
-    def __init__(self, inventory_target, minimum_price_increment, investment_fraction):
+    def __init__(self, inventory_target, minimum_price_increment, investment_fraction, risk_aversion):
         self.inventory_target = inventory_target
         self.minimum_price_increment = minimum_price_increment
         self.investment_fraction = investment_fraction
+        self.risk_aversion = risk_aversion
 
 
 class HFTHistory:
@@ -89,3 +92,4 @@ class HFTHistory:
         self.speed = [speed]
         self.cum_investment = [cum_investment]
         self.wealth = [wealth]
+        self.locked_profit = []

@@ -24,13 +24,16 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
         # select active HFT traders
         all_speed = [hft.var.speed for hft in high_frequency_traders]
-        adj_factor =  1. / sum(all_speed)
+        adj_factor =  np.divide(1., sum(all_speed))
         relative_speed = [adj_factor * speed for speed in all_speed]
-        active_market_makers = np.random.choice(high_frequency_traders,
+        try:
+            active_market_makers = np.random.choice(high_frequency_traders,
                                                 size=int((parameters['hft_sample_size'] * len(high_frequency_traders))),
                                                 p=relative_speed, replace=False)
-        # sort active market makers to fastest first
-        sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False)
+            # sort active market makers to fastest first
+            sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False)
+        except:
+            sorted_active_market_makers = []
 
         # update common LFT price components
         mid_price = 0.5 * (orderbook.highest_bid_price + orderbook.lowest_ask_price)
@@ -55,11 +58,12 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                                   abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
         for market_maker in sorted_active_market_makers:
-            ideal_volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))
+            #ideal_volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))
+            ideal_volume = parameters['hfm_fixed_vol']
             if market_maker.var.stocks > market_maker.par.inventory_target:#TODO add reference to total money? :
                 price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
                 volume = int(min(ideal_volume, market_maker.var.stocks)) # inventory constraint
-                if volume > 0:
+                if volume > 0: #and price > market_maker.var.last_buy_price['price']:
                     orderbook.add_ask(price, volume, market_maker)
             else:
                 price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
@@ -77,12 +81,24 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             seller.var.stocks -= matched_orders[1]
             buyer.var.money -= matched_orders[0] * matched_orders[1]
             seller.var.money += matched_orders[0] * matched_orders[1]
-
+            # record last buy price for HFT traders
+            if "HFT" in repr(buyer):
+                buyer.var.last_buy_price['price'] = matched_orders[0]
+                #buyer.var.last_buy_price['age'] = 0
+            if "HFT" in repr(seller):
+                locked_profit = matched_orders[0] - seller.var.last_buy_price['price']
+                print(locked_profit)
+                seller.var_previous.locked_profit.append(locked_profit)
         # Record hft variables
         for hft in high_frequency_traders:
             hft.var_previous.money.append(hft.var.money)
             hft.var_previous.stocks.append(hft.var.stocks)
             hft.var_previous.wealth.append(hft.var.wealth)
+            # update last_buy_price age and reset if age is over risk aversion limit
+            # hft.var.last_buy_price['age'] += 1
+            # if hft.var.last_buy_price['age'] > hft.par.risk_aversion:
+            #     hft.var.last_buy_price['price'] = 0
+            #     hft.var.last_buy_price['age'] = 0
 
         orderbook.cleanse_book()
 

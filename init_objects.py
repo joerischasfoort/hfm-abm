@@ -31,13 +31,15 @@ def init_objects(parameters):
                                 parameters["inventory_target"],
                                 parameters["hft_speed"] + parameters["hft_init_investment"]**parameters["return_on_investment"],
                                 parameters["hft_init_investment"],
-                                divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"])
+                                divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"],
+                                {'price': 0, 'age': 0})
         previous_hft_vars = HFTHistory(divide_by_agents(parameters["total_hft_money"], total_hft),
-                                         parameters["inventory_target"],
-                                         parameters["hft_speed"] + parameters["hft_init_investment"] ** parameters["return_on_investment"],
-                                         parameters["hft_init_investment"],
-                                         divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"])
-        hft_params = HFTParameters(parameters["inventory_target"], parameters["minimum_price_increment"], parameters["investment_fraction"])
+                                       parameters["inventory_target"],
+                                       parameters["hft_speed"] + parameters["hft_init_investment"] ** parameters["return_on_investment"],
+                                       parameters["hft_init_investment"],
+                                       divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"])
+        hft_params = HFTParameters(parameters["inventory_target"], parameters["minimum_price_increment"],
+                                   parameters["investment_fraction"], parameters["hfm_risk_aversion"])
         high_frequency_traders.append(HFTrader(idx, hft_vars, previous_hft_vars, hft_params))
 
     orderbook = LimitOrderBook(parameters['fundamental_value'], parameters["agent_order_price_variability"], parameters['horizon_max'])
