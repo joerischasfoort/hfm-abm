@@ -51,11 +51,11 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             fcast_price = mid_price * np.exp(fcast_return)
             # submit orders
             if fcast_price > mid_price:
-                orderbook.add_bid(np.random.normal(orderbook.lowest_ask_price, parameters['std_LFT_price']),
-                                  abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
+                bid_price = fcast_price * (1. - trader.par.spread)
+                orderbook.add_bid(bid_price, abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
             else:
-                orderbook.add_ask(np.random.normal(orderbook.highest_bid_price, parameters['std_LFT_price']),
-                                  abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
+                ask_price = fcast_price * (1 + trader.par.spread)
+                orderbook.add_ask(ask_price, abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
         for market_maker in sorted_active_market_makers:
             #ideal_volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))

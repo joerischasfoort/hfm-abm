@@ -102,7 +102,7 @@ class LimitOrderBook:
             self.transaction_volumes.append(volume)
             self.matched_bids.append((winning_bid, winning_ask))
 
-            return price, volume, winning_bid, winning_ask, market_maker_orders_available[0]
+            return price, volume, winning_bid, winning_ask
 
     def update_bid_ask_spread(self, order_type):
         """update the current highest bid or lowest ask and store previous values"""

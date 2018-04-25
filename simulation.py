@@ -22,6 +22,7 @@ parameters = {
     "w_fundamentalists": 1, #1
     "w_chartists": 10, # 10
     "w_random": 1,
+    "spread_max": 0.3,
     # hft parameters
     "inventory_target": 1,
     "minimum_price_increment": 0.001,
