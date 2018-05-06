@@ -1,6 +1,7 @@
 import numpy as np
 
-class LFTrader():
+
+class LFTrader:
     """Class holding low frequency trader properties"""
     def __init__(self, name, variables, previous_variables, parameters, expectations):
         self.name = name
@@ -46,7 +47,7 @@ class TraderExpectations:
         self.price = price
 
 
-class HFTrader():
+class HFTrader:
     """Class holding high frequency trader properties"""
     def __init__(self, name, variables, previous_variables, parameters):
         self.name = name
@@ -69,6 +70,7 @@ class HFTvariables:
         self.cum_investment = cum_investment
         self.wealth = wealth
         self.last_buy_price = last_buy_price
+        self.inventory_age = 0
 
 
 class HFTParameters:

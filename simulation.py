@@ -8,7 +8,7 @@ parameters = {
     # global parameters
     "n_lft": 100,
     "n_hft": 1,
-    "ticks": 10000,
+    "ticks": 1000,
     "fundamental_value": 10,
     "lft_sample_size": 0.2,
     "hft_sample_size": 1.0,
@@ -20,14 +20,14 @@ parameters = {
     "investment_frequency": 5000,
     # lft parameters
     "w_fundamentalists": 1, #1
-    "w_chartists": 10, # 10
-    "w_random": 1,
-    "spread_max": 0.3,
+    "w_chartists": 1.4, # 10
+    "w_random": 3,
+    "spread_max": 0.5,
     # hft parameters
     "inventory_target": 1,
     "minimum_price_increment": 0.001,
     "investment_fraction": 0.00,
-    "hfm_risk_aversion": 10,
+    "hfm_risk_aversion": 25,
     "hfm_fixed_vol": 1,
     # initial values
     "wealth": 300,

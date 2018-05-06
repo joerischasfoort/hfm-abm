@@ -60,10 +60,14 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         for market_maker in sorted_active_market_makers:
             #ideal_volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))
             ideal_volume = parameters['hfm_fixed_vol']
-            if market_maker.var.stocks > market_maker.par.inventory_target:#TODO add reference to total money? :
+            if market_maker.var.inventory_age > market_maker.par.risk_aversion:
+                price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
+                volume = int(min(ideal_volume, market_maker.var.stocks))
+                orderbook.add_ask(price, volume, market_maker)
+            elif market_maker.var.stocks > market_maker.par.inventory_target:#TODO add reference to total money? :
                 price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
                 volume = int(min(ideal_volume, market_maker.var.stocks)) # inventory constraint
-                if volume > 0: #and price > market_maker.var.last_buy_price['price']:
+                if volume > 0 and price > market_maker.var.last_buy_price['price']:
                     orderbook.add_ask(price, volume, market_maker)
             else:
                 price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
@@ -89,11 +93,13 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 locked_profit = matched_orders[0] - seller.var.last_buy_price['price']
                 print(locked_profit)
                 seller.var_previous.locked_profit.append(locked_profit)
+                seller.var.inventory_age = 0
         # Record hft variables
         for hft in high_frequency_traders:
             hft.var_previous.money.append(hft.var.money)
             hft.var_previous.stocks.append(hft.var.stocks)
             hft.var_previous.wealth.append(hft.var.wealth)
+            hft.var.inventory_age += 1
             # update last_buy_price age and reset if age is over risk aversion limit
             # hft.var.last_buy_price['age'] += 1
             # if hft.var.last_buy_price['age'] > hft.par.risk_aversion:
