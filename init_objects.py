@@ -42,6 +42,7 @@ def init_objects(parameters):
                                    parameters["investment_fraction"], parameters["hfm_risk_aversion"])
         high_frequency_traders.append(HFTrader(idx, hft_vars, previous_hft_vars, hft_params))
 
-    orderbook = LimitOrderBook(parameters['fundamental_value'], parameters["agent_order_price_variability"], parameters['horizon_max'])
+    orderbook = LimitOrderBook(parameters['fundamental_value'], parameters["agent_order_price_variability"],
+                               parameters['horizon_max'], parameters['max_order_expiration_ticks'])
 
     return high_frequency_traders, low_frequency_traders, orderbook

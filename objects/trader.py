@@ -71,6 +71,7 @@ class HFTvariables:
         self.wealth = wealth
         self.last_buy_price = last_buy_price
         self.inventory_age = 0
+        self.active_orders = []
 
 
 class HFTParameters:

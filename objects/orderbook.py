@@ -2,16 +2,17 @@
 
 import bisect
 import operator
-
+import numpy as np
 
 class LimitOrderBook:
     """Base limit order book """
-    def __init__(self, last_price, initial_bid_ask, max_return_interval):
+    def __init__(self, last_price, initial_bid_ask, max_return_interval, order_expiration):
         self.transaction_prices = []
         self.transaction_volumes = []
         self.matched_bids = []
         self.bids = []
         self.asks = []
+        self.order_expiration = order_expiration
         self.unresolved_orders_history = []
         self.transaction_prices_history = []
         self.transaction_volumes_history = []
@@ -26,16 +27,26 @@ class LimitOrderBook:
         self.sell_orders_history = []
         self.buy_orders_history = []
         self.returns = [0 for i in range(max_return_interval)]
+        self.tick_close_price = [np.mean([self.highest_bid_price, self.lowest_ask_price])]
 
     def add_bid(self, price, volume, agent):
         """Add a bid to the (price low-high, age young-old) sorted bids book"""
-        bisect.insort_left(self.bids, Order(order_type='b', owner=agent, price=price, volume=volume))
+        bid = Order(order_type='b', owner=agent, price=price, volume=volume)
+        bisect.insort_left(self.bids, bid)
         self.update_bid_ask_spread('bid')
+        return bid
 
     def add_ask(self, price, volume, agent):
         """Add an ask to the (price low-high, age old-young) sorted asks book"""
-        bisect.insort_right(self.asks, Order(order_type='a', owner=agent, price=price, volume=volume))
+        ask = Order(order_type='a', owner=agent, price=price, volume=volume)
+        bisect.insort_right(self.asks, ask)
         self.update_bid_ask_spread('ask')
+        return ask
+
+    def cancel_order(self, order):
+        for book in [self.bids, self.asks]:
+            if order in book:
+                book.remove(order)
 
     def cleanse_book(self):
         """
@@ -56,18 +67,27 @@ class LimitOrderBook:
         self.buy_orders_today = 0
         self.sell_orders_history.append(self.sell_orders_today)
         self.sell_orders_today = 0
-        # in this model all orders are cleared at the end of the tick
-        self.bids = []
-        self.asks = []
+        # increase the age of orders
+        for book in [self.bids, self.asks]:
+            for order in book:
+                order.age += 1
+                if order.age > self.order_expiration:
+                    book.remove(order)
+        # update current highest bid and lowest ask
+        for order_type in ['bid', 'ask']:
+            self.update_bid_ask_spread(order_type)
+        self.tick_close_price.append(np.mean([self.highest_bid_price, self.lowest_ask_price])) #TODO check this works
+        self.returns.append( self.tick_close_price[-1] / self.tick_close_price[-2] )
+        #self.bids = []
+        #self.asks = []
 
     def match_orders(self):
         """Return a price, volume, bid and ask and delete them from the order book if volume of either reaches zero"""
-        market_maker_orders_available = (True, None)
         # first make sure that neither the bids or asks books are empty
         if not (self.bids and self.asks):
             return None
         # then match highest bid with lowest ask
-        if (self.bids[-1].price >= self.asks[0].price):
+        if self.bids[-1].price >= self.asks[0].price:
             winning_bid = self.bids[-1]
             winning_ask = self.asks[0]
             price = winning_ask.price
@@ -76,7 +96,8 @@ class LimitOrderBook:
             if winning_bid.volume == winning_ask.volume:
                 # notify owner it no longer has an order in the market
                 for order in [winning_bid, winning_ask]:
-                    order.owner.order_in_market = False
+                    if 'HFT' in repr(order.owner):
+                        order.owner.var.active_orders = []#.remove(order)
                 # remove these elements from list
                 del self.bids[-1]
                 del self.asks[0]
@@ -89,12 +110,14 @@ class LimitOrderBook:
                 self.bids[-1].volume -= volume
                 # delete the empty bid or ask
                 if min_index == 0:
-                    self.bids[-1].owner.order_in_market = False
+                    if 'HFT' in repr(self.bids[-1].owner):
+                        self.bids[-1].owner.var.active_orders = []#.remove(self.bids[-1])
                     del self.bids[-1]
                     # update current highest bid
                     self.update_bid_ask_spread('bid')
                 else:
-                    self.asks[0].owner.order_in_market = False
+                    if 'HFT' in repr(self.asks[0].owner):
+                        self.asks[0].owner.var.active_orders = []#.remove(self.asks[0])
                     del self.asks[0]
                     # update lowest ask
                     self.update_bid_ask_spread('ask')
@@ -120,6 +143,7 @@ class LimitOrderBook:
 
     def __repr__(self):
         return "order_book_{}".format(self.stock)
+
 
 class Order:
     """The order class can represent both bid or ask type orders"""

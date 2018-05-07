@@ -9,7 +9,7 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
     np.random.seed(seed)
 
     for tick in range(parameters['av_return_interval_max'] + 1, parameters["ticks"]):
-        if tick % parameters["investment_frequency"] > 0:
+        if tick % parameters["investment_frequency"] == 0:
             # investment
             for hft in high_frequency_traders:
                 investment_amount = max(hft.par.investment_fraction * hft.var.money, 0)
@@ -24,19 +24,19 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
         # select active HFT traders
         all_speed = [hft.var.speed for hft in high_frequency_traders]
-        adj_factor =  np.divide(1., sum(all_speed))
+        adj_factor = np.divide(1., sum(all_speed))
         relative_speed = [adj_factor * speed for speed in all_speed]
         try:
             active_market_makers = np.random.choice(high_frequency_traders,
-                                                size=int((parameters['hft_sample_size'] * len(high_frequency_traders))),
-                                                p=relative_speed, replace=False)
+                                                    size=int((parameters['hft_sample_size'] * len(high_frequency_traders))),
+                                                    p=relative_speed, replace=False)
             # sort active market makers to fastest first
             sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False)
         except:
             sorted_active_market_makers = []
 
         # update common LFT price components
-        mid_price = 0.5 * (orderbook.highest_bid_price + orderbook.lowest_ask_price)
+        mid_price = orderbook.tick_close_price[-1]
         fundamental_component = np.log(parameters['fundamental_value'] / mid_price)
         noise_component = parameters['std_noise'] * np.random.randn()
         chartist_component = np.cumsum(orderbook.returns[-parameters['av_return_interval_max']:]
@@ -58,22 +58,30 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 orderbook.add_ask(ask_price, abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
 
         for market_maker in sorted_active_market_makers:
-            #ideal_volume = abs(market_maker.var.stocks - market_maker.par.inventory_target + int(np.random.normal(scale=parameters['std_HFT_vol'])))
+            # cancel any active orders
+            if market_maker.var.active_orders:
+                for order in market_maker.var.active_orders:
+                    orderbook.cancel_order(order)
+
+            # place new order
             ideal_volume = parameters['hfm_fixed_vol']
             if market_maker.var.inventory_age > market_maker.par.risk_aversion:
                 price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
                 volume = int(min(ideal_volume, market_maker.var.stocks))
-                orderbook.add_ask(price, volume, market_maker)
-            elif market_maker.var.stocks > market_maker.par.inventory_target:#TODO add reference to total money? :
+                ask = orderbook.add_ask(price, volume, market_maker)
+                market_maker.var.active_orders.append(ask)
+            elif market_maker.var.stocks > market_maker.par.inventory_target:#TODO add reference to total money?:
                 price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
                 volume = int(min(ideal_volume, market_maker.var.stocks)) # inventory constraint
                 if volume > 0 and price > market_maker.var.last_buy_price['price']:
-                    orderbook.add_ask(price, volume, market_maker)
+                    ask = orderbook.add_ask(price, volume, market_maker)
+                    market_maker.var.active_orders.append(ask)
             else:
                 price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
                 volume = int(min(ideal_volume, market_maker.var.money / price)) # budget constraint
                 if volume > 0:
-                    orderbook.add_bid(price, volume, market_maker)
+                    bid = orderbook.add_bid(price, volume, market_maker)
+                    market_maker.var.active_orders.append(bid)
 
         while True:
             matched_orders = orderbook.match_orders()
