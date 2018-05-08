@@ -83,6 +83,9 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                     bid = orderbook.add_bid(price, volume, market_maker)
                     market_maker.var.active_orders.append(bid)
 
+        # record market depth before clearing
+        orderbook.update_depth()
+
         while True:
             matched_orders = orderbook.match_orders()
             if matched_orders is None:

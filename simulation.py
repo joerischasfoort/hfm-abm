@@ -8,7 +8,7 @@ parameters = {
     # global parameters
     "n_lft": 100,
     "n_hft": 0,
-    "ticks": 1000, # 390 ticks per day
+    "ticks": 600, # 390 ticks per day
     "fundamental_value": 10,
     "lft_sample_size": 0.05,
     "hft_sample_size": 1.0,
@@ -20,9 +20,9 @@ parameters = {
     "investment_frequency": 5000,
     "max_order_expiration_ticks": 30,
     # lft parameters
-    "w_fundamentalists": 1.1, #1
-    "w_chartists": 1.5, # 10
-    "w_random": 2,
+    "w_fundamentalists": 1.0, #1
+    "w_chartists": 1.4, # 10
+    "w_random": 4.0,
     "spread_max": 0.25,
     # hft parameters
     "inventory_target": 1,

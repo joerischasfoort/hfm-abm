@@ -28,6 +28,8 @@ class LimitOrderBook:
         self.buy_orders_history = []
         self.returns = [0 for i in range(max_return_interval)]
         self.tick_close_price = [np.mean([self.highest_bid_price, self.lowest_ask_price])]
+        self.tick_bid_depth = []
+        self.tick_ask_depth = []
 
     def add_bid(self, price, volume, agent):
         """Add a bid to the (price low-high, age young-old) sorted bids book"""
@@ -78,8 +80,6 @@ class LimitOrderBook:
             self.update_bid_ask_spread(order_type)
         self.tick_close_price.append(np.mean([self.highest_bid_price, self.lowest_ask_price])) #TODO check this works
         self.returns.append( self.tick_close_price[-1] / self.tick_close_price[-2] )
-        #self.bids = []
-        #self.asks = []
 
     def match_orders(self):
         """Return a price, volume, bid and ask and delete them from the order book if volume of either reaches zero"""
@@ -140,6 +140,16 @@ class LimitOrderBook:
             self.highest_bid_price_history.append(self.highest_bid_price)
             self.lowest_ask_price_history.append(self.lowest_ask_price)
             self.highest_bid_price = self.bids[-1].price
+
+    def update_depth(self):
+        bid_depth = 0
+        ask_depth = 0
+        for bid in self.bids:
+            bid_depth += bid.volume
+        for ask in self.asks:
+            ask_depth += ask.volume
+        self.tick_bid_depth.append(bid_depth)
+        self.tick_ask_depth.append(ask_depth)
 
     def __repr__(self):
         return "order_book_{}".format(self.stock)
