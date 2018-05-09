@@ -23,7 +23,7 @@ parameters = {
     "w_fundamentalists": 1.0, #1
     "w_chartists": 1.4, # 10
     "w_random": 4.0,
-    "spread_max": 0.25,
+    "spread_max": 0.004087, # from Riordann & Storkenmaier 2012
     # hft parameters
     "inventory_target": 1,
     "minimum_price_increment": 0.001,
