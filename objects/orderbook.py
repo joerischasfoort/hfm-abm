@@ -78,8 +78,8 @@ class LimitOrderBook:
         # update current highest bid and lowest ask
         for order_type in ['bid', 'ask']:
             self.update_bid_ask_spread(order_type)
-        self.tick_close_price.append(np.mean([self.highest_bid_price, self.lowest_ask_price])) #TODO check this works
-        self.returns.append( self.tick_close_price[-1] / self.tick_close_price[-2] )
+        self.tick_close_price.append(np.mean([self.highest_bid_price, self.lowest_ask_price]))
+        self.returns.append((self.tick_close_price[-1] - self.tick_close_price[-2]) / self.tick_close_price[-2])
 
     def match_orders(self):
         """Return a price, volume, bid and ask and delete them from the order book if volume of either reaches zero"""
