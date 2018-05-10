@@ -21,9 +21,9 @@ class Tradervariables:
     def __init__(self, money, stocks, weight_fundamentalist, weight_chartist, weight_random):
         self.money = money
         self.stocks = stocks
-        self.weight_fundamentalist = np.abs(weight_fundamentalist * np.random.randn())
-        self.weight_chartist = (weight_chartist * np.random.randn())
-        self.weight_random = (weight_random * np.random.randn())
+        self.weight_fundamentalist = abs(np.random.laplace(0., weight_fundamentalist))#weight_fundamentalist * np.random.randn())
+        self.weight_chartist = abs(np.random.laplace(0., weight_chartist))#(weight_chartist * np.random.randn())
+        self.weight_random = abs(np.random.laplace(0., weight_random))#(weight_random * np.random.randn())
         self.forecast_adjust = 1. / (self.weight_fundamentalist + self.weight_chartist + self.weight_random)
         self.last_buy_price = {'price': 0, 'age': 0}
 
