@@ -23,7 +23,7 @@ def init_objects(parameters):
         lft_vars = Tradervariables(parameters['wealth'], 0, weight_fundamentalist, weight_chartist, weight_random)
         previous_lft_vars = Tradervariables(parameters['wealth'], 0, weight_fundamentalist, weight_chartist, weight_random)
         lft_params = TraderParameters(parameters['horizon_min'], parameters['horizon_max'], parameters['spread_max'])
-        lft_expectations = TraderExpectations(parameters['init_price'])
+        lft_expectations = TraderExpectations(parameters['fundamental_value'])
         low_frequency_traders.append(LFTrader(idx, lft_vars, previous_lft_vars, lft_params, lft_expectations))
 
     for idx in range(total_hft):
