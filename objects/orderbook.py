@@ -6,7 +6,7 @@ import numpy as np
 
 class LimitOrderBook:
     """Base limit order book """
-    def __init__(self, last_price, initial_bid_ask, max_return_interval, order_expiration):
+    def __init__(self, last_price, spread_max, max_return_interval, order_expiration):
         self.transaction_prices = []
         self.transaction_volumes = []
         self.matched_bids = []
@@ -17,9 +17,9 @@ class LimitOrderBook:
         self.transaction_prices_history = []
         self.transaction_volumes_history = []
         self.matched_bids_history = []
-        self.highest_bid_price = last_price - (initial_bid_ask[-1] / 100) # init bid_ask is measured in basis points
+        self.highest_bid_price = last_price - (spread_max / 2)
         self.highest_bid_price_history = []
-        self.lowest_ask_price = last_price + (initial_bid_ask[-1] / 100) # init bid_ask is measured in basis points
+        self.lowest_ask_price = last_price + (spread_max / 2)
         self.lowest_ask_price_history = []
         self.m_m_orders_available_after_cleaning = False
         self.sell_orders_today = 0

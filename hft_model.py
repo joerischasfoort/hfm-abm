@@ -8,7 +8,7 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
     random.seed(seed)
     np.random.seed(seed)
 
-    for tick in range(parameters['av_return_interval_max'] + 1, parameters["ticks"]):
+    for tick in range(parameters['horizon_max'] + 1, parameters["ticks"]):
         if tick % parameters["investment_frequency"] == 0:
             # investment
             for hft in high_frequency_traders:
@@ -39,8 +39,8 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         mid_price = orderbook.tick_close_price[-1]
         fundamental_component = np.log(parameters['fundamental_value'] / mid_price)
         noise_component = parameters['std_noise'] * np.random.randn()
-        chartist_component = np.cumsum(orderbook.returns[-parameters['av_return_interval_max']:]
-                                       ) / np.arange(1., float(parameters['av_return_interval_max'] + 1))
+        chartist_component = np.cumsum(orderbook.returns[-parameters['horizon_max']:]
+                                       ) / np.arange(1., float(parameters['horizon_max'] + 1))
 
         for trader in active_traders:
             # update expectations

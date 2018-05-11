@@ -33,8 +33,6 @@ parameters = {
     "wealth": 300,
     "horizon_min": 1,
     "horizon_max": 4,
-    "av_return_interval_max": 4,
-    "agent_order_price_variability": (1, 1),
     "total_hft_money": 2000,
     "hft_speed": 1,
     "hft_init_investment": 0
