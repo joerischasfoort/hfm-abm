@@ -11,12 +11,12 @@ parameters = {
     "ticks": 600, # 390 ticks per day
     "fundamental_value": 10,
     "lft_sample_size": 0.05,
-    "hft_sample_size": 1.0,
+    "hft_sample_size": 1.0, # TODO make speed
     "std_noise": 0.01,
     "std_LFT_vol": 4,
-    "std_HFT_vol": 4,
-    "return_on_investment": 0.5,
-    "investment_frequency": 5000,
+    "std_HFT_vol": 4, #TODO remove
+    "return_on_investment": 0.5, # TODO remove
+    "investment_frequency": 5000, # TODO remove
     "max_order_expiration_ticks": 30,
     # lft parameters
     "w_fundamentalists": 1.0, #1
