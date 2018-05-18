@@ -20,26 +20,24 @@ def init_objects(parameters):
         weight_fundamentalist = parameters['w_fundamentalists']
         weight_chartist = parameters['w_chartists']
         weight_random = parameters['w_random']
-        lft_vars = Tradervariables(parameters['wealth'], 0, weight_fundamentalist, weight_chartist, weight_random)
-        previous_lft_vars = Tradervariables(parameters['wealth'], 0, weight_fundamentalist, weight_chartist, weight_random)
+        lft_vars = Tradervariables(0, 0, weight_fundamentalist, weight_chartist, weight_random)
         lft_params = TraderParameters(parameters['horizon_min'], parameters['horizon_max'], parameters['spread_max'])
         lft_expectations = TraderExpectations(parameters['fundamental_value'])
-        low_frequency_traders.append(LFTrader(idx, lft_vars, previous_lft_vars, lft_params, lft_expectations))
+        low_frequency_traders.append(LFTrader(idx, lft_vars, lft_params, lft_expectations))
 
     for idx in range(total_hft):
         hft_vars = HFTvariables(divide_by_agents(parameters["total_hft_money"], total_hft),
                                 parameters["inventory_target"],
-                                parameters["hft_speed"] + parameters["hft_init_investment"]**parameters["return_on_investment"],
-                                parameters["hft_init_investment"],
-                                divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"],
+                                parameters["hft_speed"],
+                                divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"] * parameters["fundamental_value"],
                                 {'price': 0, 'age': 0})
         previous_hft_vars = HFTHistory(divide_by_agents(parameters["total_hft_money"], total_hft),
                                        parameters["inventory_target"],
-                                       parameters["hft_speed"] + parameters["hft_init_investment"] ** parameters["return_on_investment"],
-                                       parameters["hft_init_investment"],
-                                       divide_by_agents(parameters["total_hft_money"], total_hft) + parameters["inventory_target"])
+                                       parameters["hft_speed"],
+                                       divide_by_agents(parameters["total_hft_money"], total_hft) + parameters[
+                                           "inventory_target"] * parameters["fundamental_value"])
         hft_params = HFTParameters(parameters["inventory_target"], parameters["minimum_price_increment"],
-                                   parameters["investment_fraction"], parameters["hfm_risk_aversion"])
+                                   parameters["hfm_horizon_min"], parameters["hfm_horizon_max"])
         high_frequency_traders.append(HFTrader(idx, hft_vars, previous_hft_vars, hft_params))
 
     orderbook = LimitOrderBook(parameters['fundamental_value'], parameters["spread_max"],

@@ -27,9 +27,12 @@ class LimitOrderBook:
         self.sell_orders_history = []
         self.buy_orders_history = []
         self.returns = [0 for i in range(max_return_interval)]
+        self.minute_returns = [0 for i in range(max_return_interval)]
         self.tick_close_price = [np.mean([self.highest_bid_price, self.lowest_ask_price])]
+        self.minute_close_price = [self.tick_close_price[-1]]
         self.tick_bid_depth = []
         self.tick_ask_depth = []
+        self.fundamental = []
 
     def add_bid(self, price, volume, agent):
         """Add a bid to the (price low-high, age young-old) sorted bids book"""
@@ -80,6 +83,10 @@ class LimitOrderBook:
             self.update_bid_ask_spread(order_type)
         self.tick_close_price.append(np.mean([self.highest_bid_price, self.lowest_ask_price]))
         self.returns.append((self.tick_close_price[-1] - self.tick_close_price[-2]) / self.tick_close_price[-2])
+
+    def update_minute_returns(self):
+        self.minute_close_price.append(self.tick_close_price[-1])
+        self.minute_returns.append((self.minute_close_price[-1] - self.minute_close_price[-2]) / self.minute_close_price[-2])
 
     def match_orders(self):
         """Return a price, volume, bid and ask and delete them from the order book if volume of either reaches zero"""
