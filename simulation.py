@@ -32,7 +32,7 @@ parameters = {
     "horizon_max": 9,
     "hfm_horizon_min": 1,
     "hfm_horizon_max": 5,
-    "total_hft_money": 2000,
+    "total_hft_money": 20000,
     "hft_speed": 1,
 }
 

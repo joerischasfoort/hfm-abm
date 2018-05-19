@@ -84,7 +84,6 @@ class HFTParameters:
         self.horizon = np.random.randint(horizon_min, horizon_max)
 
 
-
 class HFTHistory:
     """
     Holds the the market maker history values of interest

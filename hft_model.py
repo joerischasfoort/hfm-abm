@@ -17,14 +17,19 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         all_speed = [hft.var.speed for hft in high_frequency_traders]
         adj_factor = np.divide(1., sum(all_speed))
         relative_speed = [adj_factor * speed for speed in all_speed]
-        try:
+        if high_frequency_traders:
             active_market_makers = np.random.choice(high_frequency_traders,
                                                     size=int((parameters['hft_sample_size'] * len(high_frequency_traders))),
                                                     p=relative_speed, replace=False)
             # sort active market makers to fastest first
-            sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False)
-        except:
+            #sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False) # can be switched on to take into account hfm speed differences
+            sorted_active_market_makers = active_market_makers
+        else:
             sorted_active_market_makers = []
+
+        # re-seed the random number generator after np.random.choice at different lengths
+        random.seed(seed + tick)
+        np.random.seed(seed + tick)
 
         # update common LFT price components
         hfm_mid_price = orderbook.tick_close_price[-1]
@@ -39,20 +44,23 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         lft_chartist_component = np.cumsum(orderbook.minute_returns[-parameters['horizon_max']:]
                                            ) / np.arange(1., float(parameters['horizon_max'] + 1))
 
+        if tick > 800:
+            print('we here')
+
         for trader in active_traders:
             # update expectations
             fcast_return = trader.var.forecast_adjust * (trader.var.weight_fundamentalist * fundamental_component + trader.var.weight_chartist *
                                                          lft_chartist_component[trader.par.horizon] + trader.var.weight_random * noise_component)
-            #fcast_return = min(fcast_return, 0.5)
-            #fcast_return = max(fcast_return, -0.5)
             fcast_price = lft_mid_price * np.exp(fcast_return)
             # submit orders
             if fcast_price > lft_mid_price:
                 bid_price = fcast_price * (1. - trader.par.spread)
-                orderbook.add_bid(bid_price, abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
+                volume = abs(int(np.random.normal(scale=parameters['std_LFT_vol'])))
+                orderbook.add_bid(bid_price, volume, trader)
             else:
                 ask_price = fcast_price * (1 + trader.par.spread)
-                orderbook.add_ask(ask_price, abs(int(np.random.normal(scale=parameters['std_LFT_vol']))), trader)
+                volume = abs(int(np.random.normal(scale=parameters['std_LFT_vol'])))
+                orderbook.add_ask(ask_price, volume, trader)
 
         for market_maker in sorted_active_market_makers:
             # 1 cancel any active orders
@@ -64,8 +72,6 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             # 2 place new order
             ideal_volume = parameters['hfm_fixed_vol']
             fcast_return = -hfm_mr_component[market_maker.par.horizon]
-            # fcast_return = min(fcast_return, 0.5)
-            # fcast_return = max(fcast_return, -0.5)
             fcast_price = hfm_mid_price * np.exp(fcast_return)
             if fcast_price > hfm_mid_price:
                 bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
@@ -81,7 +87,7 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                     market_maker.var.active_orders.append(ask)
 
         # record market depth before clearing
-        orderbook.update_depth()
+        orderbook.update_stats()
 
         while True:
             matched_orders = orderbook.match_orders()
@@ -98,7 +104,6 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 buyer.var.last_buy_price['price'] = matched_orders[0]
             if "HFT" in repr(seller):
                 locked_profit = matched_orders[0] - seller.var.last_buy_price['price']
-                print(locked_profit)
                 seller.var_previous.locked_profit.append(locked_profit)
                 seller.var.inventory_age = 0
         # Record hft variables

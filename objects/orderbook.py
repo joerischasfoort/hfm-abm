@@ -140,15 +140,15 @@ class LimitOrderBook:
             raise ValueError("unknown order_type")
 
         if order_type == 'ask' and self.asks:
-            self.lowest_ask_price_history.append(self.lowest_ask_price)
-            self.highest_bid_price_history.append(self.highest_bid_price)
+            #self.lowest_ask_price_history.append(self.lowest_ask_price)
+            #self.highest_bid_price_history.append(self.highest_bid_price)
             self.lowest_ask_price = self.asks[0].price
         if order_type == 'bid' and self.bids:
-            self.highest_bid_price_history.append(self.highest_bid_price)
-            self.lowest_ask_price_history.append(self.lowest_ask_price)
+            #self.highest_bid_price_history.append(self.highest_bid_price)
+            #self.lowest_ask_price_history.append(self.lowest_ask_price)
             self.highest_bid_price = self.bids[-1].price
 
-    def update_depth(self):
+    def update_stats(self):
         bid_depth = 0
         ask_depth = 0
         for bid in self.bids:
@@ -157,6 +157,9 @@ class LimitOrderBook:
             ask_depth += ask.volume
         self.tick_bid_depth.append(bid_depth)
         self.tick_ask_depth.append(ask_depth)
+
+        self.lowest_ask_price_history.append(self.lowest_ask_price)
+        self.highest_bid_price_history.append(self.highest_bid_price)
 
     def __repr__(self):
         return "order_book_{}".format(self.stock)
