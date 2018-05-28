@@ -44,9 +44,6 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         lft_chartist_component = np.cumsum(orderbook.minute_returns[-parameters['horizon_max']:]
                                            ) / np.arange(1., float(parameters['horizon_max'] + 1))
 
-        if tick > 800:
-            print('we here')
-
         for trader in active_traders:
             # update expectations
             fcast_return = trader.var.forecast_adjust * (trader.var.weight_fundamentalist * fundamental_component + trader.var.weight_chartist *
