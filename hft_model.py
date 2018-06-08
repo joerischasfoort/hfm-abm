@@ -1,6 +1,7 @@
 """"The main model"""
 import numpy as np
 import random
+from functions.helpers import savitzky_golay
 
 
 def hft_model(high_frequency_traders, low_frequency_traders, orderbook, parameters, seed=1):
@@ -43,6 +44,7 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                                            ) / np.arange(1., float(parameters['hfm_horizon_max'] + 1))
         lft_chartist_component = np.cumsum(orderbook.minute_returns[-parameters['horizon_max']:]
                                            ) / np.arange(1., float(parameters['horizon_max'] + 1))
+        hfm_smoothed_prices =  savitzky_golay(np.array(orderbook.tick_close_price), 41, 7)
 
         for trader in active_traders:
             # update expectations
@@ -68,8 +70,10 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
 
             # 2 place new order
             ideal_volume = parameters['hfm_fixed_vol']
-            fcast_return = -hfm_mr_component[market_maker.par.horizon]
+            fcast_return = -hfm_mr_component[market_maker.par.horizon] - (parameters['transaction_fee'] * hfm_mid_price)
             fcast_price = hfm_mid_price * np.exp(fcast_return)
+
+            fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon * 10:])
             if fcast_price > hfm_mid_price:
                 bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
                 volume = int(min(ideal_volume, bid_price * market_maker.var.money))
