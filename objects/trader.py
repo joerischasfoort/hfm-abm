@@ -76,12 +76,13 @@ class HFTParameters:
     """
     Holds the the trader parameters
     """
-    def __init__(self, inventory_target, minimum_price_increment, horizon_min, horizon_max):
+    def __init__(self, inventory_target, minimum_price_increment, horizon_min, horizon_max, risk_aversion):
         self.inventory_target = inventory_target
         self.minimum_price_increment = minimum_price_increment
         self.horizon_min = horizon_min
         self.horizon_max = horizon_max
         self.horizon = np.random.randint(horizon_min, horizon_max)
+        self.risk_aversion = risk_aversion
 
 
 class HFTHistory:

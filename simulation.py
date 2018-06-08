@@ -17,6 +17,7 @@ parameters = {
     "std_noise": 0.01,
     "std_LFT_vol": 4,
     "max_order_expiration_ticks": 30,
+    "transaction_fee": 0.0,
     # lft parameters
     "w_fundamentalists": 1.0, #1
     "w_chartists": 1.4, # 10
@@ -25,14 +26,14 @@ parameters = {
     # hft parameters
     "inventory_target": 1,
     "minimum_price_increment": 0.001,
-    "hfm_risk_aversion": 25,
+    "hfm_risk_aversion": 25.0,
     "hfm_fixed_vol": 1,
     # initial values
     "horizon_min": 1,
     "horizon_max": 9,
     "hfm_horizon_min": 1,
     "hfm_horizon_max": 5,
-    "total_hft_money": 20000,
+    "total_hft_money": 1000,
     "hft_speed": 1,
 }
 

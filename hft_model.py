@@ -1,6 +1,7 @@
 """"The main model"""
 import numpy as np
 import random
+import scipy.optimize
 from functions.helpers import savitzky_golay
 
 
@@ -73,19 +74,55 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             fcast_return = -hfm_mr_component[market_maker.par.horizon] - (parameters['transaction_fee'] * hfm_mid_price)
             fcast_price = hfm_mid_price * np.exp(fcast_return)
 
-            fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon * 10:])
-            if fcast_price > hfm_mid_price:
+            fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon * 6:])
+
+            current_stocks = market_maker.var.stocks / market_maker.var.wealth #TODO check if this goes well
+
+            # determine p*: the price at which the hfm would be satisfied with its current portfolio
+            def optimal_p_star(price):
+                price = abs(price)
+                stocks = np.divide(np.log(fcast_price / price),
+                                   market_maker.par.risk_aversion * fcast_volatility * price) - current_stocks
+                return stocks
+
+            def optimal_stock_holdings(price):
+                stocks = np.divide(np.log(fcast_price / price), market_maker.par.risk_aversion * fcast_volatility * price)
+                return stocks
+
+            p_star = float(scipy.optimize.broyden1(optimal_p_star, fcast_price))
+
+            # quote ask & bid prices
+            if orderbook.highest_bid_price + market_maker.par.minimum_price_increment > p_star:
+                bid_price = p_star - market_maker.par.minimum_price_increment
+            elif orderbook.highest_bid_price + market_maker.par.minimum_price_increment < p_star:
                 bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
-                volume = int(min(ideal_volume, bid_price * market_maker.var.money))
-                if volume > 0:
-                    bid = orderbook.add_bid(bid_price, volume, market_maker)
-                    market_maker.var.active_orders.append(bid)
             else:
+                bid_price = None
+
+            if orderbook.lowest_ask_price - market_maker.par.minimum_price_increment > p_star:
                 ask_price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
-                volume = int(min(ideal_volume, market_maker.var.stocks))
-                if volume > 0:
-                    ask = orderbook.add_ask(ask_price, volume, market_maker)
-                    market_maker.var.active_orders.append(ask)
+            elif orderbook.lowest_ask_price - market_maker.par.minimum_price_increment < p_star:
+                ask_price = p_star + market_maker.par.minimum_price_increment
+            else:
+                ask_price = None
+
+            if ask_price:
+                ask_volume = market_maker.var.stocks - int(optimal_stock_holdings(ask_price) * market_maker.var.wealth)
+            else:
+                ask_volume = 0
+
+            if bid_price:
+                bid_volume = int(optimal_stock_holdings(bid_price) * market_maker.var.wealth) - market_maker.var.stocks
+            else:
+                bid_volume = 0
+
+            if ask_volume > 0:
+                ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
+                market_maker.var.active_orders.append(ask)
+
+            if bid_volume > 0:
+                bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
+                market_maker.var.active_orders.append(bid)
 
         # record market depth before clearing
         orderbook.update_stats()
@@ -111,6 +148,7 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         for hft in high_frequency_traders:
             hft.var_previous.money.append(hft.var.money)
             hft.var_previous.stocks.append(hft.var.stocks)
+            hft.var.wealth = hft.var.money + hft.var.stocks
             hft.var_previous.wealth.append(hft.var.wealth)
             hft.var.inventory_age += 1
             # update last_buy_price age and reset if age is over risk aversion limit
