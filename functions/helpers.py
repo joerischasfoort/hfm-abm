@@ -1,5 +1,5 @@
 import numpy as np
-
+from math import factorial
 
 def div0(a, b):
     """
@@ -60,9 +60,6 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
        W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery
        Cambridge University Press ISBN-13: 9780521880688
     """
-    import numpy as np
-    from math import factorial
-
     try:
         window_size = np.abs(np.int(window_size))
         order = np.abs(np.int(order))

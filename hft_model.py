@@ -13,7 +13,8 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
     fundamental = [parameters["fundamental_value"]]
 
     for tick in range(parameters['horizon_max'] + 1, parameters["ticks"]):
-        # select active traders
+        if tick > 331:
+            print('tick: ', tick)
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
         # select active HFT traders
         all_speed = [hft.var.speed for hft in high_frequency_traders]
@@ -40,12 +41,13 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             # evolve the fundamental value via AR(1) process
             fundamental.append(fundamental[-1] + parameters["std_fundamental"] * np.random.randn())
         fundamental_component = np.log(fundamental[-1] / lft_mid_price)
+        #print(fundamental_component)
         noise_component = parameters['std_noise'] * np.random.randn()
         hfm_mr_component = np.cumsum(orderbook.returns[-parameters['hfm_horizon_max']:]
                                            ) / np.arange(1., float(parameters['hfm_horizon_max'] + 1))
         lft_chartist_component = np.cumsum(orderbook.minute_returns[-parameters['horizon_max']:]
                                            ) / np.arange(1., float(parameters['horizon_max'] + 1))
-        hfm_smoothed_prices =  savitzky_golay(np.array(orderbook.tick_close_price), 41, 7)
+        hfm_smoothed_prices = savitzky_golay(np.array(orderbook.tick_close_price), 41, 7)
 
         for trader in active_traders:
             # update expectations
@@ -70,13 +72,12 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 market_maker.var.active_orders = []
 
             # 2 place new order
-            ideal_volume = parameters['hfm_fixed_vol']
             fcast_return = -hfm_mr_component[market_maker.par.horizon] - (parameters['transaction_fee'] * hfm_mid_price)
             fcast_price = hfm_mid_price * np.exp(fcast_return)
 
             fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon * 6:])
 
-            current_stocks = market_maker.var.stocks / market_maker.var.wealth #TODO check if this goes well
+            current_stocks = max((market_maker.var.stocks * hfm_mid_price) / market_maker.var.wealth, 0.001) # prevent this from going to zero to find optimum price
 
             # determine p*: the price at which the hfm would be satisfied with its current portfolio
             def optimal_p_star(price):
@@ -89,40 +90,37 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 stocks = np.divide(np.log(fcast_price / price), market_maker.par.risk_aversion * fcast_volatility * price)
                 return stocks
 
-            p_star = float(scipy.optimize.broyden1(optimal_p_star, fcast_price))
+            p_star = float(scipy.optimize.broyden1(optimal_p_star, fcast_price, line_search='wolfe'))
 
             # quote ask & bid prices
             if orderbook.highest_bid_price + market_maker.par.minimum_price_increment > p_star:
-                bid_price = p_star - market_maker.par.minimum_price_increment
+                bid_price = max(p_star - market_maker.par.minimum_price_increment, 0)
+                bid_volume = int(
+                    min(optimal_stock_holdings(bid_price) * market_maker.var.wealth - market_maker.var.stocks,
+                    market_maker.var.money * bid_price))
+                if bid_volume > 0:
+                    bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
+                    market_maker.var.active_orders.append(bid)
             elif orderbook.highest_bid_price + market_maker.par.minimum_price_increment < p_star:
                 bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
-            else:
-                bid_price = None
+                bid_volume = int(min(optimal_stock_holdings(bid_price) * market_maker.var.wealth - market_maker.var.stocks,
+                                 market_maker.var.money * bid_price)) # TODO check if correct
+                if bid_volume > 0:
+                    bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
+                    market_maker.var.active_orders.append(bid)
 
             if orderbook.lowest_ask_price - market_maker.par.minimum_price_increment > p_star:
-                ask_price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
+                ask_price = max(orderbook.lowest_ask_price - market_maker.par.minimum_price_increment, 0)
+                ask_volume = int(min(market_maker.var.stocks - optimal_stock_holdings(ask_price) * market_maker.var.wealth, market_maker.var.stocks)) #TODO check if correct
+                if ask_volume > 0:
+                    ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
+                    market_maker.var.active_orders.append(ask)
             elif orderbook.lowest_ask_price - market_maker.par.minimum_price_increment < p_star:
-                ask_price = p_star + market_maker.par.minimum_price_increment
-            else:
-                ask_price = None
-
-            if ask_price:
-                ask_volume = market_maker.var.stocks - int(optimal_stock_holdings(ask_price) * market_maker.var.wealth)
-            else:
-                ask_volume = 0
-
-            if bid_price:
-                bid_volume = int(optimal_stock_holdings(bid_price) * market_maker.var.wealth) - market_maker.var.stocks
-            else:
-                bid_volume = 0
-
-            if ask_volume > 0:
-                ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
-                market_maker.var.active_orders.append(ask)
-
-            if bid_volume > 0:
-                bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
-                market_maker.var.active_orders.append(bid)
+                ask_price = max(p_star + market_maker.par.minimum_price_increment, 0)
+                ask_volume = int(min(market_maker.var.stocks - optimal_stock_holdings(ask_price) * market_maker.var.wealth, market_maker.var.stocks)) #TODO check if correct
+                if ask_volume > 0:
+                    ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
+                    market_maker.var.active_orders.append(ask)
 
         # record market depth before clearing
         orderbook.update_stats()
@@ -148,7 +146,7 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         for hft in high_frequency_traders:
             hft.var_previous.money.append(hft.var.money)
             hft.var_previous.stocks.append(hft.var.stocks)
-            hft.var.wealth = hft.var.money + hft.var.stocks
+            hft.var.wealth = hft.var.money + (hft.var.stocks * np.mean([orderbook.highest_bid_price, orderbook.lowest_ask_price]))
             hft.var_previous.wealth.append(hft.var.wealth)
             hft.var.inventory_age += 1
             # update last_buy_price age and reset if age is over risk aversion limit

@@ -2,12 +2,15 @@ import numpy as np
 from objects.trader import *
 from objects.orderbook import *
 
-def init_objects(parameters):
+
+def init_objects(parameters, seed=1):
     """
     Function to initialise the model agentss
     :param parameters: object which holds all model parameters
     :return: list of agents
     """
+    np.random.seed(seed)
+
     # 1 initialize low frequency traders
     low_frequency_traders = []
     high_frequency_traders = []

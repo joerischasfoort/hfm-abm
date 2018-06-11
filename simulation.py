@@ -27,7 +27,6 @@ parameters = {
     "inventory_target": 1,
     "minimum_price_increment": 0.001,
     "hfm_risk_aversion": 25.0,
-    "hfm_fixed_vol": 1,
     # initial values
     "horizon_min": 1,
     "horizon_max": 9,
@@ -38,7 +37,7 @@ parameters = {
 }
 
 # 2 initalise model objects
-high_frequency_traders, low_frequency_traders, orderbook = init_objects(parameters)
+high_frequency_traders, low_frequency_traders, orderbook = init_objects(parameters, seed=1)
 
 # 3 simulate model
 high_frequency_traders, low_frequency_traders, orderbook = hft_model(high_frequency_traders, low_frequency_traders, orderbook, parameters, seed=1)
