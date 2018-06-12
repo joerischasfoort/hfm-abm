@@ -13,7 +13,7 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
     fundamental = [parameters["fundamental_value"]]
 
     for tick in range(parameters['horizon_max'] + 1, parameters["ticks"]):
-        if tick > 331:
+        if tick % 250 == 0:
             print('tick: ', tick)
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
         # select active HFT traders

@@ -9,7 +9,7 @@ parameters = {
     "n_lft": 100,
     "n_hft": 1,
     "ticks": 1000, # 390 ticks per day
-    "ticks_per_minute": 2,
+    "ticks_per_minute": 1,
     "fundamental_value": 10,
     "std_fundamental": 0.08,
     "lft_sample_size": 0.05,
@@ -20,7 +20,7 @@ parameters = {
     "transaction_fee": 0.0,
     # lft parameters
     "w_fundamentalists": 1.0, #1
-    "w_chartists": 1.4, # 10
+    "w_chartists": 0.0, # 10
     "w_random": 4.0,
     "spread_max": 0.004087, # from Riordann & Storkenmaier 2012
     # hft parameters
