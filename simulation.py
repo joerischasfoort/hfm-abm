@@ -11,7 +11,7 @@ parameters = {
     "ticks": 1000, # 390 ticks per day
     "ticks_per_minute": 1,
     "fundamental_value": 10,
-    "std_fundamental": 0.08,
+    "std_fundamental": 0.0,
     "lft_sample_size": 0.05,
     "hft_sample_size": 1.0,
     "std_noise": 0.01,
@@ -26,7 +26,7 @@ parameters = {
     # hft parameters
     "inventory_target": 1,
     "minimum_price_increment": 0.001,
-    "hfm_risk_aversion": 25.0,
+    "hfm_risk_aversion": 1.1,
     # initial values
     "horizon_min": 1,
     "horizon_max": 9,

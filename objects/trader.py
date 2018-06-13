@@ -96,3 +96,7 @@ class HFTHistory:
         self.speed = [speed]
         self.wealth = [wealth]
         self.locked_profit = []
+        self.ask_quote = []
+        self.bid_quote = []
+        self.bid_quote_volume = []
+        self.ask_quote_volume = []

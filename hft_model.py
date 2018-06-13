@@ -71,9 +71,16 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                     orderbook.cancel_order(order)
                 market_maker.var.active_orders = []
 
-            # 2 place new order
-            fcast_return = -hfm_mr_component[market_maker.par.horizon] - (parameters['transaction_fee'] * hfm_mid_price)
-            fcast_price = hfm_mid_price * np.exp(fcast_return)
+            # 2 make forecasts E[spread] = E[spread]_{t-1} + \chi(spread_{t-1} - E[spread]_{t-1})
+            fcast_spread = market_maker.var_previous.fcast_spread[-1] + market_maker.par.adaptive_param * (
+                orderbook.spreads_history[-1] - market_maker.var_previous.fcast_spread[-1]
+            )
+
+            fcast_bid_return = fcast_spread - (parameters['transaction_fee'])
+            fcast_bid_price = hfm_mid_price * np.exp(fcast_bid_return)
+
+            fcast_ask_return = -fcast_spread - (parameters['transaction_fee'])
+            fcast_ask_price = hfm_mid_price * np.exp(fcast_ask_return)
 
             fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon * 6:])
 
@@ -91,37 +98,47 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 return stocks
 
             try:
-                p_star = float(scipy.optimize.broyden1(optimal_p_star, fcast_price, line_search='wolfe'))
+                p_star_bid = float(scipy.optimize.broyden1(optimal_p_star, fcast_bid_price, line_search='wolfe'))
             except:
-                p_star = None
+                p_star_bid = None
 
-            if p_star:
+            if p_star_bid:
                 # quote ask & bid prices
-                if orderbook.highest_bid_price + market_maker.par.minimum_price_increment > p_star:
-                    bid_price = max(p_star - market_maker.par.minimum_price_increment, 0)
-                    bid_volume = int(min(optimal_stock_holdings(bid_price)- market_maker.var.stocks, market_maker.var.money * bid_price))
-                    if bid_volume > 0:
-                        bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
-                        market_maker.var.active_orders.append(bid)
-                elif orderbook.highest_bid_price + market_maker.par.minimum_price_increment < p_star:
+                if orderbook.highest_bid_price + market_maker.par.minimum_price_increment < p_star_bid:
                     bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
                     bid_volume = int(min(optimal_stock_holdings(bid_price) - market_maker.var.stocks, market_maker.var.money * bid_price))
                     if bid_volume > 0:
                         bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
+                        market_maker.var_previous.bid_quote.append(bid_price)
+                        market_maker.var_previous.bid_quote_volume.append(bid_volume)
                         market_maker.var.active_orders.append(bid)
+                    else:
+                        market_maker.var_previous.bid_quote.append(None)
+                        market_maker.var_previous.bid_quote_volume.append(None)
+                else:
+                    market_maker.var_previous.bid_quote.append(False)
+                    market_maker.var_previous.bid_quote_volume.append(False)
 
-                if orderbook.lowest_ask_price - market_maker.par.minimum_price_increment > p_star:
+            try:
+                p_star_ask = float(scipy.optimize.broyden1(optimal_p_star, fcast_ask_price, line_search='wolfe'))
+            except:
+                p_star_ask = None
+
+            if p_star_ask:
+                if orderbook.lowest_ask_price - market_maker.par.minimum_price_increment > p_star_ask:
                     ask_price = max(orderbook.lowest_ask_price - market_maker.par.minimum_price_increment, 0)
                     ask_volume = int(min(market_maker.var.stocks - optimal_stock_holdings(ask_price), market_maker.var.stocks))
                     if ask_volume > 0:
                         ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
+                        market_maker.var_previous.ask_quote.append(ask_price)
+                        market_maker.var_previous.ask_quote_volume.append(ask_volume)
                         market_maker.var.active_orders.append(ask)
-                elif orderbook.lowest_ask_price - market_maker.par.minimum_price_increment < p_star:
-                    ask_price = max(p_star + market_maker.par.minimum_price_increment, 0)
-                    ask_volume = int(min(market_maker.var.stocks - optimal_stock_holdings(ask_price) * market_maker.var.wealth, market_maker.var.stocks)) #TODO check if this works
-                    if ask_volume > 0:
-                        ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
-                        market_maker.var.active_orders.append(ask)
+                    else:
+                        market_maker.var_previous.ask_quote.append(None)
+                        market_maker.var_previous.ask_quote_volume.append(None)
+                else:
+                    market_maker.var_previous.ask_quote.append(False)
+                    market_maker.var_previous.ask_quote_volume.append(False)
 
         # record market depth before clearing
         orderbook.update_stats()

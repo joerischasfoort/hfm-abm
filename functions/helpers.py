@@ -1,5 +1,7 @@
 import numpy as np
+import pandas as pd
 from math import factorial
+
 
 def div0(a, b):
     """
@@ -80,3 +82,106 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     lastvals = y[-1] + np.abs(y[-half_window - 1:-1][::-1] - y[-1])
     y = np.concatenate((firstvals, y, lastvals))
     return np.convolve(m[::-1], y, mode='valid')
+
+
+def organise_data(obs):
+    """
+    Helper function to organise orderbook data output from multiple monte-carlo simulations
+    :param obs: list of orderbooks
+    :return: pandas DataFrames of prices, returns, autocorrelations, volatility, volume & fundamentals
+    """
+    window = 20
+    close_price = []
+    returns = []
+    autocorr_returns = []
+    autocorr_abs_returns = []
+    returns_volatility = []
+    volume = []
+    fundamentals = []
+    for ob in obs:  # record
+        # close price
+        close_price.append(ob.tick_close_price)
+        # returns
+        r = pd.Series(np.array(ob.tick_close_price)).pct_change()
+        returns.append(r)
+        # autocorrelation returns
+        ac_r = [r.autocorr(lag=lag) for lag in range(25)]
+        autocorr_returns.append(ac_r)
+        # autocorrelation absolute returns
+        absolute_returns = pd.Series(r).abs()
+        autocorr_abs_returns.append([absolute_returns.autocorr(lag=lag) for lag in range(25)])
+        # volatility of returns
+        roller_returns = r.rolling(window)
+        returns_volatility.append(roller_returns.std(ddof=0))
+        # volume
+        volume.append([sum(volumes) for volumes in ob.transaction_volumes_history])
+        # fundamentals
+        fundamentals.append(ob.fundamental)
+    mc_prices = pd.DataFrame(close_price).transpose()
+    mc_returns = pd.DataFrame(returns).transpose()
+    mc_autocorr_returns = pd.DataFrame(autocorr_returns).transpose()
+    mc_autocorr_abs_returns = pd.DataFrame(autocorr_abs_returns).transpose()
+    mc_volatility = pd.DataFrame(returns_volatility).transpose()
+    mc_volume = pd.DataFrame(volume).transpose()
+    mc_fundamentals = pd.DataFrame(fundamentals).transpose()
+
+    return mc_prices, mc_returns, mc_autocorr_returns, mc_autocorr_abs_returns, mc_volatility, mc_volume, mc_fundamentals
+
+
+def hft_in_match(match):
+    """
+    Check if a high frequency trader was a counterparty in at least one of two matched orders
+    :param match: tuple of a bid and ask order matched by the limit-order book
+    :return: Boolean True or False
+    """
+    for buy_sell in match:
+        if 'HFT' in str(buy_sell):
+            return True
+    return False
+
+
+def prcnt_hft_trading(ob):
+    """
+    Find out the total percentage of trades in which a high frequency trader partook
+    :param ob: Object orderbook
+    :return: float percentage of traders
+    """
+    amount_matched_orders = 0
+    hft_participating_orders = 0
+    for tick in ob.matched_bids_history:
+        amount_matched_orders += len(tick)
+        for match in tick:
+            if hft_in_match(match):
+                hft_participating_orders += 1
+
+    percentage_hft_matches = hft_participating_orders / amount_matched_orders
+    return percentage_hft_matches
+
+
+def sharpe(periods, mean, standard_deviation):
+    """
+    Calculate sharpe ratio
+    :param periods: int total periods over which to make the calculation
+    :param mean: float average value
+    :param standard_deviation: float standard deviation of value
+    :return: float Sharpe Ratio
+    """
+    return np.sqrt(periods) * (mean / standard_deviation)
+
+
+def all_sharpe(hfts):
+    """
+
+    :param hfts:
+    :return:
+    """
+    money = []
+    stocks = []
+    locked_in_profits = []
+    for hft in hfts:
+        money.append(np.array(hft.var_previous.money))
+        stocks.append(np.array(hft.var_previous.stocks))
+        locked_in_profits.append(np.array(hft.var_previous.locked_profit))
+    all_profits = np.concatenate(locked_in_profits)
+    all_sharpe = sharpe(len(all_profits), all_profits.mean(), all_profits.std())
+    return all_sharpe
