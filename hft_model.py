@@ -40,13 +40,13 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             lft_mid_price = orderbook.tick_close_price[-1]
             # evolve the fundamental value via AR(1) process
             fundamental.append(fundamental[-1] + parameters["std_fundamental"] * np.random.randn())
+
         fundamental_component = np.log(fundamental[-1] / lft_mid_price)
-        #print(fundamental_component)
         noise_component = parameters['std_noise'] * np.random.randn()
-        hfm_mr_component = np.cumsum(orderbook.returns[-parameters['hfm_horizon_max']:]
-                                           ) / np.arange(1., float(parameters['hfm_horizon_max'] + 1))
         lft_chartist_component = np.cumsum(orderbook.minute_returns[-parameters['horizon_max']:]
                                            ) / np.arange(1., float(parameters['horizon_max'] + 1))
+        hfm_mr_component = np.cumsum(orderbook.returns[-parameters['hfm_horizon_max']:]
+                                     ) / np.arange(1., float(parameters['hfm_horizon_max'] + 1))
         hfm_smoothed_prices = savitzky_golay(np.array(orderbook.tick_close_price), 41, 7)
 
         for trader in active_traders:
@@ -57,11 +57,11 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             # submit orders
             if fcast_price > lft_mid_price:
                 bid_price = fcast_price * (1. - trader.par.spread)
-                volume = abs(int(np.random.normal(scale=parameters['std_LFT_vol'])))
+                volume = max(1,abs(int(np.random.normal(scale=parameters['std_LFT_vol']))))
                 orderbook.add_bid(bid_price, volume, trader)
             else:
                 ask_price = fcast_price * (1 + trader.par.spread)
-                volume = abs(int(np.random.normal(scale=parameters['std_LFT_vol'])))
+                volume = max(1,abs(int(np.random.normal(scale=parameters['std_LFT_vol']))))
                 orderbook.add_ask(ask_price, volume, trader)
 
         for market_maker in sorted_active_market_makers:
@@ -72,73 +72,48 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 market_maker.var.active_orders = []
 
             # 2 make forecasts E[spread] = E[spread]_{t-1} + \chi(spread_{t-1} - E[spread]_{t-1})
+            potential_bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
+            min_spread_bid = hfm_mid_price - parameters['max_spread_exchange'] / 2
+            potential_ask_price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
+            max_spread_ask = hfm_mid_price + parameters['max_spread_exchange'] / 2
+
             fcast_spread = market_maker.var_previous.fcast_spread[-1] + market_maker.par.adaptive_param * (
                 orderbook.spreads_history[-1] - market_maker.var_previous.fcast_spread[-1]
             )
+            market_maker.var_previous.fcast_spread.append(fcast_spread)
 
-            fcast_bid_return = fcast_spread - (parameters['transaction_fee'])
-            fcast_bid_price = hfm_mid_price * np.exp(fcast_bid_return)
+            fcast_return = -hfm_mr_component[market_maker.par.horizon] - (parameters['transaction_fee'] * hfm_mid_price)
+            fcast_price = hfm_mid_price * np.exp(fcast_return)
 
-            fcast_ask_return = -fcast_spread - (parameters['transaction_fee'])
-            fcast_ask_price = hfm_mid_price * np.exp(fcast_ask_return)
+            if fcast_price > hfm_mid_price:
+                bid_volume = int(min(1, market_maker.var.money * potential_bid_price))
+                bid = orderbook.add_bid(min_spread_bid, bid_volume, market_maker)
+                market_maker.var_previous.bid_quote.append(potential_bid_price)
+                market_maker.var_previous.bid_quote_volume.append(bid_volume)
+                market_maker.var.active_orders.append(bid)
 
-            fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon * 6:])
+                ask_volume = int(
+                    min(1, market_maker.var.stocks))
+                ask = orderbook.add_ask(potential_ask_price, ask_volume, market_maker)
+                market_maker.var_previous.ask_quote.append(potential_ask_price)
+                market_maker.var_previous.ask_quote_volume.append(ask_volume)
+                market_maker.var.active_orders.append(ask)
+            else:
+                bid_volume = int(min(1, market_maker.var.money * potential_bid_price))
+                bid = orderbook.add_bid(potential_bid_price, bid_volume, market_maker)
+                market_maker.var_previous.bid_quote.append(potential_bid_price)
+                market_maker.var_previous.bid_quote_volume.append(bid_volume)
+                market_maker.var.active_orders.append(bid)
 
-            current_stocks = max((market_maker.var.stocks * hfm_mid_price) / market_maker.var.wealth, 0.001) # prevent this from going to zero to find optimum price
+                ask_volume = int(
+                    min(1, market_maker.var.stocks))
+                max_spread_ask = max(max_spread_ask, 0)
+                ask = orderbook.add_ask(max_spread_ask, ask_volume, market_maker)
+                market_maker.var_previous.ask_quote.append(max_spread_ask)
+                market_maker.var_previous.ask_quote_volume.append(ask_volume)
+                market_maker.var.active_orders.append(ask)
 
-            # determine p*: the price at which the hfm would be satisfied with its current portfolio
-            def optimal_p_star(price):
-                price = abs(price)
-                stocks = np.divide(np.log(fcast_price / price),
-                                   market_maker.par.risk_aversion * fcast_volatility * price) - current_stocks
-                return stocks
-
-            def optimal_stock_holdings(price):
-                stocks = np.divide(np.log(fcast_price / price), market_maker.par.risk_aversion * fcast_volatility * price)
-                return stocks
-
-            try:
-                p_star_bid = float(scipy.optimize.broyden1(optimal_p_star, fcast_bid_price, line_search='wolfe'))
-            except:
-                p_star_bid = None
-
-            if p_star_bid:
-                # quote ask & bid prices
-                if orderbook.highest_bid_price + market_maker.par.minimum_price_increment < p_star_bid:
-                    bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
-                    bid_volume = int(min(optimal_stock_holdings(bid_price) - market_maker.var.stocks, market_maker.var.money * bid_price))
-                    if bid_volume > 0:
-                        bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
-                        market_maker.var_previous.bid_quote.append(bid_price)
-                        market_maker.var_previous.bid_quote_volume.append(bid_volume)
-                        market_maker.var.active_orders.append(bid)
-                    else:
-                        market_maker.var_previous.bid_quote.append(None)
-                        market_maker.var_previous.bid_quote_volume.append(None)
-                else:
-                    market_maker.var_previous.bid_quote.append(False)
-                    market_maker.var_previous.bid_quote_volume.append(False)
-
-            try:
-                p_star_ask = float(scipy.optimize.broyden1(optimal_p_star, fcast_ask_price, line_search='wolfe'))
-            except:
-                p_star_ask = None
-
-            if p_star_ask:
-                if orderbook.lowest_ask_price - market_maker.par.minimum_price_increment > p_star_ask:
-                    ask_price = max(orderbook.lowest_ask_price - market_maker.par.minimum_price_increment, 0)
-                    ask_volume = int(min(market_maker.var.stocks - optimal_stock_holdings(ask_price), market_maker.var.stocks))
-                    if ask_volume > 0:
-                        ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
-                        market_maker.var_previous.ask_quote.append(ask_price)
-                        market_maker.var_previous.ask_quote_volume.append(ask_volume)
-                        market_maker.var.active_orders.append(ask)
-                    else:
-                        market_maker.var_previous.ask_quote.append(None)
-                        market_maker.var_previous.ask_quote_volume.append(None)
-                else:
-                    market_maker.var_previous.ask_quote.append(False)
-                    market_maker.var_previous.ask_quote_volume.append(False)
+            #fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon:])
 
         # record market depth before clearing
         orderbook.update_stats()

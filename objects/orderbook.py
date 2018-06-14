@@ -33,7 +33,7 @@ class LimitOrderBook:
         self.tick_bid_depth = []
         self.tick_ask_depth = []
         self.fundamental = []
-        self.spreads_history = []
+        self.spreads_history = [spread_max]
 
     def add_bid(self, price, volume, agent):
         """Add a bid to the (price low-high, age young-old) sorted bids book"""
@@ -83,6 +83,7 @@ class LimitOrderBook:
         for order_type in ['bid', 'ask']:
             self.update_bid_ask_spread(order_type)
         self.tick_close_price.append(np.mean([self.highest_bid_price, self.lowest_ask_price]))
+        self.spreads_history.append(self.lowest_ask_price - self.highest_bid_price)
         self.returns.append((self.tick_close_price[-1] - self.tick_close_price[-2]) / self.tick_close_price[-2])
 
     def update_minute_returns(self):

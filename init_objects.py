@@ -38,9 +38,11 @@ def init_objects(parameters, seed=1):
                                        parameters["inventory_target"],
                                        parameters["hft_speed"],
                                        divide_by_agents(parameters["total_hft_money"], total_hft) + parameters[
-                                           "inventory_target"] * parameters["fundamental_value"])
+                                           "inventory_target"] * parameters["fundamental_value"],
+                                       parameters["spread_max"])
         hft_params = HFTParameters(parameters["inventory_target"], parameters["minimum_price_increment"],
-                                   parameters["hfm_horizon_min"], parameters["hfm_horizon_max"], parameters["hfm_risk_aversion"])
+                                   parameters["hfm_horizon_min"], parameters["hfm_horizon_max"],
+                                   parameters["hfm_risk_aversion"], parameters["hfm_adaptive_param"])
         high_frequency_traders.append(HFTrader(idx, hft_vars, previous_hft_vars, hft_params))
 
     orderbook = LimitOrderBook(parameters['fundamental_value'], parameters["spread_max"],

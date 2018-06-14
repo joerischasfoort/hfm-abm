@@ -76,13 +76,14 @@ class HFTParameters:
     """
     Holds the the trader parameters
     """
-    def __init__(self, inventory_target, minimum_price_increment, horizon_min, horizon_max, risk_aversion):
+    def __init__(self, inventory_target, minimum_price_increment, horizon_min, horizon_max, risk_aversion, adaptive_parameter):
         self.inventory_target = inventory_target
         self.minimum_price_increment = minimum_price_increment
         self.horizon_min = horizon_min
         self.horizon_max = horizon_max
         self.horizon = np.random.randint(horizon_min, horizon_max)
         self.risk_aversion = risk_aversion
+        self.adaptive_param = adaptive_parameter
 
 
 class HFTHistory:
@@ -90,11 +91,12 @@ class HFTHistory:
     Holds the the market maker history values of interest
     """
 
-    def __init__(self, money, stocks, speed, wealth):
+    def __init__(self, money, stocks, speed, wealth, init_fcast_spread):
         self.money = [money]
         self.stocks = [stocks]
         self.speed = [speed]
         self.wealth = [wealth]
+        self.fcast_spread = [init_fcast_spread]
         self.locked_profit = []
         self.ask_quote = []
         self.bid_quote = []
