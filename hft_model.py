@@ -47,8 +47,46 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                                            ) / np.arange(1., float(parameters['horizon_max'] + 1))
         hfm_mr_component = np.cumsum(orderbook.returns[-parameters['hfm_horizon_max']:]
                                      ) / np.arange(1., float(parameters['hfm_horizon_max'] + 1))
-        hfm_smoothed_prices = savitzky_golay(np.array(orderbook.tick_close_price), 41, 7)
 
+        # market makers provide quotes
+        for market_maker in sorted_active_market_makers:
+            # 1 cancel any active quotes
+            if market_maker.var.active_orders:
+                for order in market_maker.var.active_orders:
+                    orderbook.cancel_order(order)
+                market_maker.var.active_orders = []
+
+            # 2 make forecasts
+            fcast_return = -hfm_mr_component[market_maker.par.horizon] - (parameters['transaction_fee'] * hfm_mid_price)
+            fcast_price = hfm_mid_price * np.exp(fcast_return)
+            std_history = np.std(orderbook.tick_close_price[-parameters['hfm_horizon_max']:])
+            fcast_std = market_maker.var_previous.fcast_std[-1] + market_maker.par.adaptive_param * (std_history - market_maker.var_previous.fcast_std[-1])
+            market_maker.var_previous.fcast_std.append(fcast_std)
+
+            # 3 determine bid & ask quotes
+            spread = market_maker.par.volatility_sensitivity * fcast_std
+            inventory_imbalance = (market_maker.var.stocks - market_maker.par.inventory_target) / market_maker.par.inventory_target
+            balancing_var = 1 / (1 + np.exp(-inventory_imbalance))
+
+            potential_bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
+            potential_ask_price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
+            quote_volume = max(abs(np.random.normal(scale=parameters['std_HFT_vol'])), 1)
+
+            bid_price = min(fcast_price - balancing_var * spread, potential_bid_price)
+            bid_volume = int(min(quote_volume, market_maker.var.money * potential_bid_price))
+            bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
+            market_maker.var_previous.bid_quote.append(bid_price)
+            market_maker.var_previous.bid_quote_volume.append(bid_volume)
+            market_maker.var.active_orders.append(bid)
+
+            ask_price = max(fcast_price + (1 - balancing_var) * spread, potential_ask_price)
+            ask_volume = int(min(quote_volume, market_maker.var.stocks))
+            ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
+            market_maker.var_previous.ask_quote.append(ask_price)
+            market_maker.var_previous.ask_quote_volume.append(ask_volume)
+            market_maker.var.active_orders.append(ask)
+
+        # LFTs enter market
         for trader in active_traders:
             # update expectations
             fcast_return = trader.var.forecast_adjust * (trader.var.weight_fundamentalist * fundamental_component + trader.var.weight_chartist *
@@ -63,57 +101,6 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
                 ask_price = fcast_price * (1 + trader.par.spread)
                 volume = max(1,abs(int(np.random.normal(scale=parameters['std_LFT_vol']))))
                 orderbook.add_ask(ask_price, volume, trader)
-
-        for market_maker in sorted_active_market_makers:
-            # 1 cancel any active orders
-            if market_maker.var.active_orders:
-                for order in market_maker.var.active_orders:
-                    orderbook.cancel_order(order)
-                market_maker.var.active_orders = []
-
-            # 2 make forecasts E[spread] = E[spread]_{t-1} + \chi(spread_{t-1} - E[spread]_{t-1})
-            potential_bid_price = orderbook.highest_bid_price + market_maker.par.minimum_price_increment
-            min_spread_bid = hfm_mid_price - parameters['max_spread_exchange'] / 2
-            potential_ask_price = orderbook.lowest_ask_price - market_maker.par.minimum_price_increment
-            max_spread_ask = hfm_mid_price + parameters['max_spread_exchange'] / 2
-
-            fcast_spread = market_maker.var_previous.fcast_spread[-1] + market_maker.par.adaptive_param * (
-                orderbook.spreads_history[-1] - market_maker.var_previous.fcast_spread[-1]
-            )
-            market_maker.var_previous.fcast_spread.append(fcast_spread)
-
-            fcast_return = -hfm_mr_component[market_maker.par.horizon] - (parameters['transaction_fee'] * hfm_mid_price)
-            fcast_price = hfm_mid_price * np.exp(fcast_return)
-
-            if fcast_price > hfm_mid_price:
-                bid_volume = int(min(1, market_maker.var.money * potential_bid_price))
-                bid = orderbook.add_bid(min_spread_bid, bid_volume, market_maker)
-                market_maker.var_previous.bid_quote.append(potential_bid_price)
-                market_maker.var_previous.bid_quote_volume.append(bid_volume)
-                market_maker.var.active_orders.append(bid)
-
-                ask_volume = int(
-                    min(1, market_maker.var.stocks))
-                ask = orderbook.add_ask(potential_ask_price, ask_volume, market_maker)
-                market_maker.var_previous.ask_quote.append(potential_ask_price)
-                market_maker.var_previous.ask_quote_volume.append(ask_volume)
-                market_maker.var.active_orders.append(ask)
-            else:
-                bid_volume = int(min(1, market_maker.var.money * potential_bid_price))
-                bid = orderbook.add_bid(potential_bid_price, bid_volume, market_maker)
-                market_maker.var_previous.bid_quote.append(potential_bid_price)
-                market_maker.var_previous.bid_quote_volume.append(bid_volume)
-                market_maker.var.active_orders.append(bid)
-
-                ask_volume = int(
-                    min(1, market_maker.var.stocks))
-                max_spread_ask = max(max_spread_ask, 0)
-                ask = orderbook.add_ask(max_spread_ask, ask_volume, market_maker)
-                market_maker.var_previous.ask_quote.append(max_spread_ask)
-                market_maker.var_previous.ask_quote_volume.append(ask_volume)
-                market_maker.var.active_orders.append(ask)
-
-            #fcast_volatility = np.var(hfm_smoothed_prices[-market_maker.par.horizon:])
 
         # record market depth before clearing
         orderbook.update_stats()

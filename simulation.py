@@ -16,6 +16,7 @@ parameters = {
     "hft_sample_size": 1.0,
     "std_noise": 0.01,
     "std_LFT_vol": 1,
+    "std_HFT_vol": 4,
     "max_order_expiration_ticks": 30,
     "transaction_fee": 0.0,
     "max_spread_exchange": 0.01,
@@ -29,6 +30,7 @@ parameters = {
     "minimum_price_increment": 0.001,
     "hfm_risk_aversion": 0.01,
     "hfm_adaptive_param": 0.2,
+    "hfm_volatility_sensitivity": 1.9,
     # initial values
     "horizon_min": 1,
     "horizon_max": 9,
