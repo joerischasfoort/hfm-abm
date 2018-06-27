@@ -7,7 +7,7 @@ from hft_model import *
 parameters = {
     # global parameters
     "n_lft": 100,
-    "n_hft": 1,
+    "n_hft": 6,
     "ticks": 1000, # 390 ticks per day
     "ticks_per_minute": 1,
     "fundamental_value": 10,
@@ -15,8 +15,8 @@ parameters = {
     "lft_sample_size": 0.03,
     "hft_sample_size": 1.0,
     "std_noise": 0.01,
-    "std_LFT_vol": 1,
-    "std_HFT_vol": 4,
+    "std_LFT_vol": 4,
+    "std_HFT_vol": 1,
     "max_order_expiration_ticks": 30,
     "transaction_fee": 0.0,
     "max_spread_exchange": 0.01,
@@ -37,7 +37,7 @@ parameters = {
     "hfm_horizon_min": 1,
     "hfm_horizon_max": 5,
     "total_hft_money": 250,
-    "hft_speed": 1,
+    "hft_speed": 0.5,
 }
 
 # 2 initalise model objects

@@ -16,17 +16,25 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
         if tick % 250 == 0:
             print('tick: ', tick)
         active_traders = random.sample(low_frequency_traders, int((parameters['lft_sample_size'] * len(low_frequency_traders))))
-        # select active HFT traders
-        all_speed = [hft.var.speed for hft in high_frequency_traders]
-        adj_factor = np.divide(1., sum(all_speed))
-        relative_speed = [adj_factor * speed for speed in all_speed]
+        # determine which market maker is active in the tick
+        active_market_makers = []
+
         if high_frequency_traders:
-            active_market_makers = np.random.choice(high_frequency_traders,
-                                                    size=int((parameters['hft_sample_size'] * len(high_frequency_traders))),
-                                                    p=relative_speed, replace=False)
-            # sort active market makers to fastest first
-            #sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False) # can be switched on to take into account hfm speed differences
-            sorted_active_market_makers = active_market_makers
+            for hfm in high_frequency_traders:
+                # speed determines wether the hfm is active this tick
+                if random.random() < hfm.var.speed:
+                    active_market_makers.append(hfm)
+            # 1 for every hfm determine if they are present in the market
+            # select active HFT traders
+            if active_market_makers:
+                #all_speed = [hft.var.speed for hft in high_frequency_traders]
+                #adj_factor = np.divide(1., sum(all_speed))
+                #relative_speed = [adj_factor * speed for speed in all_speed]
+                # sort active market makers to fastest first
+                sorted_active_market_makers = sorted(active_market_makers, key=lambda x: x.var.speed, reverse=False) # can be switched on to take into account hfm speed differences
+            #sorted_active_market_makers = active_market_makers
+            else:
+                sorted_active_market_makers = []
         else:
             sorted_active_market_makers = []
 
@@ -73,18 +81,26 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             quote_volume = max(abs(np.random.normal(scale=parameters['std_HFT_vol'])), 1)
 
             bid_price = min(fcast_price - balancing_var * spread, potential_bid_price)
-            bid_volume = int(min(quote_volume, market_maker.var.money * potential_bid_price))
-            bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
-            market_maker.var_previous.bid_quote.append(bid_price)
-            market_maker.var_previous.bid_quote_volume.append(bid_volume)
-            market_maker.var.active_orders.append(bid)
+            bid_volume = int(min(quote_volume, market_maker.var.money / potential_bid_price))
+            if bid_volume > 0:
+                bid = orderbook.add_bid(bid_price, bid_volume, market_maker)
+                market_maker.var_previous.bid_quote.append(bid_price)
+                market_maker.var_previous.bid_quote_volume.append(bid_volume)
+                market_maker.var.active_orders.append(bid)
 
             ask_price = max(fcast_price + (1 - balancing_var) * spread, potential_ask_price)
             ask_volume = int(min(quote_volume, market_maker.var.stocks))
-            ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
-            market_maker.var_previous.ask_quote.append(ask_price)
-            market_maker.var_previous.ask_quote_volume.append(ask_volume)
-            market_maker.var.active_orders.append(ask)
+            if ask_volume > 0:
+                ask = orderbook.add_ask(ask_price, ask_volume, market_maker)
+                market_maker.var_previous.ask_quote.append(ask_price)
+                market_maker.var_previous.ask_quote_volume.append(ask_volume)
+                market_maker.var.active_orders.append(ask)
+
+            if market_maker.var.stocks < 0:
+                print('I have negative inventory')
+
+            if market_maker.var.money < 0:
+                print('I have negative money')
 
         # LFTs enter market
         for trader in active_traders:
@@ -95,11 +111,11 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
             # submit orders
             if fcast_price > lft_mid_price:
                 bid_price = fcast_price * (1. - trader.par.spread)
-                volume = max(1,abs(int(np.random.normal(scale=parameters['std_LFT_vol']))))
+                volume = max(1, abs(int(np.random.normal(scale=parameters['std_LFT_vol']))))
                 orderbook.add_bid(bid_price, volume, trader)
             else:
                 ask_price = fcast_price * (1 + trader.par.spread)
-                volume = max(1,abs(int(np.random.normal(scale=parameters['std_LFT_vol']))))
+                volume = max(1, abs(int(np.random.normal(scale=parameters['std_LFT_vol']))))
                 orderbook.add_ask(ask_price, volume, trader)
 
         # record market depth before clearing

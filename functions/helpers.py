@@ -185,3 +185,41 @@ def all_sharpe(hfts):
     all_profits = np.concatenate(locked_in_profits)
     all_sharpe = sharpe(len(all_profits), all_profits.mean(), all_profits.std())
     return all_sharpe
+
+
+def av_bid_asks(orderbooks):
+    mean_bid_asks = []
+    for ob in orderbooks:
+        bid_ask = [ask - bid for bid, ask in zip(ob.highest_bid_price_history, ob.lowest_ask_price_history)]
+        # quoted bid_ask_spread = (Ask - Bid / Mid) / 2
+        bid_ask = list(filter(lambda x: x >0, bid_ask))
+        mean_bid_asks.append(np.mean(bid_ask))
+    return mean_bid_asks
+
+
+def depth(orderbooks):
+    average_depth = []
+    average_imbalance = []
+    for ob in orderbooks:
+        av_ask_depth = np.mean(ob.tick_bid_depth) #[np.mean(prices) for prices in orderbook.transaction_prices_history]
+        av_bid_depth = np.mean(ob.tick_ask_depth)
+        average_imbalance.append(np.mean(abs(np.array(ob.tick_bid_depth) - np.array(ob.tick_ask_depth))))
+        average_depth.append(av_ask_depth + av_bid_depth)
+    return average_depth, average_imbalance
+
+
+def vol(orderbooks):
+    volume = []
+    for ob in orderbooks:
+        total_tick_volume = [sum(volumes) for volumes in ob.transaction_volumes_history]
+        volume.append(sum(total_tick_volume))
+    return volume
+
+
+def vola(orderbooks):
+    volatility = []
+    for ob in orderbooks:
+        end_tick_price = ob.tick_close_price #[np.mean(prices) for prices in orderbook.transaction_prices_history]
+        returns = pd.Series(np.array(end_tick_price)).pct_change()
+        volatility.append(returns.std())
+    return volatility
