@@ -42,7 +42,7 @@ def init_objects(parameters, seed=1):
                                        parameters["spread_max"])
         hft_params = HFTParameters(parameters["inventory_target"], parameters["minimum_price_increment"],
                                    parameters["hfm_horizon_min"], parameters["hfm_horizon_max"],
-                                   parameters["hfm_risk_aversion"], parameters["hfm_adaptive_param"],
+                                   parameters["hfm_adaptive_param"],
                                    parameters["hfm_volatility_sensitivity"])
         high_frequency_traders.append(HFTrader(idx, hft_vars, previous_hft_vars, hft_params))
 

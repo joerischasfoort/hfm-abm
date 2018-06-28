@@ -44,10 +44,10 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
 
         # update common LFT price components
         hfm_mid_price = orderbook.tick_close_price[-1]
-        if tick % parameters['ticks_per_minute'] == 0:
-            lft_mid_price = orderbook.tick_close_price[-1]
-            # evolve the fundamental value via AR(1) process
-            fundamental.append(fundamental[-1] + parameters["std_fundamental"] * np.random.randn())
+
+        lft_mid_price = orderbook.tick_close_price[-1]
+        # evolve the fundamental value via AR(1) process
+        fundamental.append(fundamental[-1] + parameters["std_fundamental"] * np.random.randn())
 
         fundamental_component = np.log(fundamental[-1] / lft_mid_price)
         noise_component = parameters['std_noise'] * np.random.randn()
@@ -148,8 +148,8 @@ def hft_model(high_frequency_traders, low_frequency_traders, orderbook, paramete
 
         orderbook.cleanse_book()
 
-        if tick % parameters['ticks_per_minute'] == 0:
-            orderbook.update_minute_returns()
-            orderbook.fundamental = fundamental
+
+        orderbook.update_minute_returns()
+        orderbook.fundamental = fundamental
 
     return high_frequency_traders, low_frequency_traders, orderbook
